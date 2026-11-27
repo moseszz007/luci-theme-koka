@@ -28,7 +28,7 @@ uci commit footstrap
 
 # Put the original design label back.
 uci set luci.themes.Footstrap='/luci-static/footstrap'
-uci -q delete luci.themes.Koka
+uci -q delete luci.themes.Koka 2>/dev/null || true
 uci commit luci
 
 rm -f /tmp/luci-indexcache.*

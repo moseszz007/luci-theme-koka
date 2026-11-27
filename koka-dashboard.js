@@ -11,11 +11,14 @@ const callInfo = rpc.declare({ object: 'system', method: 'info' });
 const callHostHints = rpc.declare({ object: 'luci-rpc', method: 'getHostHints', expect: { '': {} } });
 const callLeases = rpc.declare({ object: 'luci-rpc', method: 'getDHCPLeases', expect: { '': {} } });
 const callInet = rpc.declare({ object: 'luci.internet-detector', method: 'InetStatus', expect: { '': {} } });
+const callZmMonitor = rpc.declare({ object: 'zapret-manager', method: 'monitor', expect: {} });
+const callZmProcs = rpc.declare({ object: 'zapret-manager', method: 'monitor_procs', expect: {} });
 
 const state = {
 	cpu: null,
 	net: { wan: null, lan: null },
-	samples: { wan: { rx: [], tx: [] }, lan: { rx: [], tx: [] } }
+	samples: { wan: { rx: [], tx: [] }, lan: { rx: [], tx: [] } },
+	zm: { prevTotal: 0, prevTicks: {}, history: { cpu: [], ram: [], temp: [] } }
 };
 
 function noBatch() {
@@ -147,6 +150,153 @@ function addSample(key, rate) {
 	}
 }
 
+/* Zapret Manager groups processes into services; keep the same idea, but with
+ * the Koka palette and only the groups this router can actually run. */
+const ZM_COMPS = [
+	{ id: 'zapret2', name: 'Zapret2', color: '#a78bfa', rx: /\/opt\/zapret2\/|nfqws2/ },
+	{ id: 'zapret', name: 'Zapret', color: '#7c9cff', rx: /\/opt\/zapret\/|(^|\/)nfqws( |$)|tpws/ },
+	{ id: 'forkozz', name: 'Forkozz', color: '#60a5fa', rx: /sing-box|netshift/ },
+	{ id: 'steer', name: 'Steer', color: '#38bdf8', rx: /(^|\/)steer/ },
+	{ id: 'mixomo', name: 'Mixomo', color: '#2dd4bf', rx: /mihomo|magitrickle|hev-socks5-tunnel/ },
+	{ id: 'bytetube', name: 'ByeTube', color: '#f87171', rx: /ciadpi|byedpi|bytetube/ },
+	{ id: 'tg', name: 'TG WS Proxy', color: '#fb923c', rx: /tg-ws-proxy|(^|\/)s?tgws/ },
+	{ id: 'ts', name: 'Tailscale', color: '#a3e635', rx: /(^|\/)tailscaled?( |$)/ },
+	{ id: 'doh', name: 'DNS over HTTPS', color: '#22d3ee', rx: /https-dns-proxy/ },
+	{ id: 'dns', name: 'DNS (dnsmasq)', color: '#06b6d4', rx: /(^|\/)dnsmasq/ },
+	{ id: 'panel', name: 'Панель и LuCI', color: '#c084fc', rx: /uhttpd|(^|\/)rpcd|zapret-manager|backend\.sh/ },
+	{ id: 'wifi', name: 'Wi-Fi', color: '#f472b6', rx: /hostapd|wpa_supplicant/ },
+	{ id: 'kernel', name: 'Ядро Linux', color: '#64748b', rx: null },
+	{ id: 'system', name: 'Система', color: '#94a3b8', rx: null }
+];
+
+const ZM_BY_ID = {};
+
+ZM_COMPS.forEach(function(c) { ZM_BY_ID[c.id] = c; });
+
+function zmCompOf(proc) {
+	const name = proc[2] || '';
+	const cmd = proc[8] || '';
+	const ppid = proc[1];
+
+	if (ppid === 2 || !cmd && /^(kworker|ksoftirqd|kthreadd|migration|rcu_|irq\/|watchdog|cpuhp)/.test(name))
+		return ZM_BY_ID.kernel;
+
+	const text = cmd + ' ' + name;
+
+	for (let i = 0; i < ZM_COMPS.length; i++) {
+		if (ZM_COMPS[i].rx && ZM_COMPS[i].rx.test(text))
+			return ZM_COMPS[i];
+	}
+
+	return ZM_BY_ID.system;
+}
+
+function pushHistory(list, value) {
+	list.push(value == null ? null : value);
+
+	if (list.length > 60)
+		list.shift();
+}
+
+function resourceStats(zm, procs, cpu, ramPct, temp, info) {
+	const hist = state.zm.history;
+
+	pushHistory(hist.cpu, cpu);
+	pushHistory(hist.ram, ramPct);
+	pushHistory(hist.temp, temp);
+
+	const mem = (zm && zm.mem) || {};
+	const memTotal = mem.total || ((info.memory && info.memory.total) ? info.memory.total / 1024 : 0);
+	const memUsed = mem.total ? Math.max(0, mem.total - (mem.avail != null ? mem.avail : mem.free || 0))
+		: ((info.memory && info.memory.total) ? info.memory.total - info.memory.available : 0) / 1024;
+
+	let flashTotal = 0, flashUsed = 0;
+
+	if (zm && Array.isArray(zm.flash)) {
+		flashTotal = zm.flash[0] || 0;
+		flashUsed = zm.flash[1] || 0;
+	}
+	else if (info.root) {
+		flashTotal = info.root.total || 0;
+		flashUsed = info.root.used || 0;
+	}
+
+	const components = {};
+	const ticks = {};
+	const memBytes = {};
+
+	if (procs && Array.isArray(procs.p)) {
+		procs.p.forEach(function(p) {
+			const comp = zmCompOf(p);
+			const pid = p[0];
+
+			ticks[pid] = p[4] || 0;
+
+			if (!components[comp.id])
+				components[comp.id] = { id: comp.id, name: comp.name, color: comp.color, cpu: 0, mem: 0, pids: 0 };
+
+			components[comp.id].mem += (p[5] || 0) * 1024;
+			components[comp.id].pids++;
+		});
+	}
+
+	const total = procs && procs.total || 0;
+	const prevTotal = state.zm.prevTotal;
+
+	if (total > prevTotal && prevTotal > 0) {
+		const delta = total - prevTotal;
+
+		Object.keys(components).forEach(function(id) {
+			components[id].cpu = 0;
+		});
+
+		procs.p.forEach(function(p) {
+			const comp = zmCompOf(p);
+			const prev = state.zm.prevTicks[p[0]];
+
+			if (prev != null && p[4] > prev)
+				components[comp.id].cpu += (p[4] - prev) / delta * 100;
+		});
+	}
+
+	state.zm.prevTotal = total;
+	state.zm.prevTicks = ticks;
+
+	const list = Object.keys(components).map(function(id) { return components[id]; })
+		.filter(function(c) { return c.mem > 0 || c.cpu > 0.05; })
+		.sort(function(a, b) { return b.mem - a.mem; });
+
+	const top = list.slice(0, 4);
+	const rest = list.slice(4);
+	const other = rest.reduce(function(acc, c) {
+		acc.mem += c.mem;
+		acc.cpu += c.cpu;
+		return acc;
+	}, { id: 'other', name: 'Другое', color: '#475569', mem: 0, cpu: 0 });
+
+	const procMem = list.reduce(function(acc, c) { return acc + c.mem; }, 0);
+
+	const stack = list.map(function(c) {
+		return { color: c.color, pct: procMem ? Math.max(c.mem / procMem * 100, 0.4) : 0 };
+	});
+
+	return {
+		available: !!zm,
+		memTotal: memTotal,
+		memUsed: memUsed,
+		procMem: procMem,
+		flashTotal: flashTotal,
+		flashUsed: flashUsed,
+		temp: temp,
+		cpu: cpu,
+		ramPct: ramPct,
+		components: top,
+		other: other.mem > 0 || other.cpu > 0 ? other : null,
+		stack: stack,
+		history: hist
+	};
+}
+
 function parseArp(text) {
 	const arp = {};
 
@@ -175,7 +325,9 @@ function fetchAll() {
 		readFile('/proc/net/arp'),
 		readFile('/proc/sys/net/netfilter/nf_conntrack_count'),
 		readFile('/proc/sys/net/netfilter/nf_conntrack_max'),
-		readFile('/sys/class/thermal/thermal_zone0/temp')
+		readFile('/sys/class/thermal/thermal_zone0/temp'),
+		L.resolveDefault(withTimeout(callZmMonitor(), 4000, null), null),
+		L.resolveDefault(withTimeout(callZmProcs(), 4000, null), null)
 	]);
 	}).then(function(res) {
 		const board = res[0] || {};
@@ -192,6 +344,8 @@ function fetchAll() {
 		const ctMax = parseInt(res[11]) || 0;
 		const tempRaw = parseInt(res[12]);
 		const temp = isNaN(tempRaw) ? null : tempRaw / 1000;
+		const zm = res[13] || null;
+		const zmProcs = res[14] || null;
 
 		const wan = wans.find(function(n) { return n.getName() === 'wan'; }) || wans[0] || null;
 		const lan = nets.find(function(n) { return n.getName() === 'lan'; }) || null;
@@ -249,6 +403,10 @@ function fetchAll() {
 		addSample('wan', wanRate);
 		addSample('lan', lanRate);
 
+		const memInfo = info.memory || {};
+		const memPctValue = memInfo.total ? pct(memInfo.total - memInfo.available, memInfo.total) : 0;
+		const resources = resourceStats(zm, zmProcs, cpu, memPctValue, temp, info);
+
 		const mainDetector = detector.find(function(i) { return i.instance === 'internet'; }) || detector[0] || null;
 
 		let status = 'bad';
@@ -283,6 +441,7 @@ function fetchAll() {
 			ctMax: ctMax,
 			temp: temp,
 			arp: arp,
+			resources: resources,
 			samples: state.samples
 		};
 	});
@@ -322,6 +481,58 @@ function updateSpark(svg, data) {
 		rxLine.setAttribute('points', points(rx));
 	if (txLine)
 		txLine.setAttribute('points', points(tx));
+}
+
+function updateResChart(svg, hist) {
+	if (!svg || !hist)
+		return;
+
+	const W = 100, H = 34;
+
+	const pad = function(values) {
+		const clean = (values || []).slice(-60).map(function(v) {
+			return v == null ? null : Math.max(0, Math.min(100, v));
+		});
+		let fill = 0;
+
+		for (let i = 0; i < clean.length; i++) {
+			if (clean[i] != null) {
+				fill = clean[i];
+				break;
+			}
+		}
+
+		const out = clean.map(function(v) { return v == null ? fill : v; });
+
+		while (out.length < 60)
+			out.unshift(fill);
+
+		return out;
+	};
+
+	const points = function(values, top) {
+		return values.map(function(value, index) {
+			return (index / 59 * W).toFixed(2) + ',' + (H - 1 - value / top * (H - 2)).toFixed(2);
+		}).join(' ');
+	};
+
+	const cpuArr = pad(hist.cpu);
+	const ramArr = pad(hist.ram);
+	const top = Math.max(10, Math.ceil(Math.max.apply(null, cpuArr.concat(ramArr)) / 10) * 10);
+	const cpu = points(cpuArr, top);
+	const ram = points(ramArr, top);
+	const area = svg.querySelector('.area');
+	const cpuLine = svg.querySelector('.cpu');
+	const ramLine = svg.querySelector('.ram');
+
+	if (cpuLine)
+		cpuLine.setAttribute('points', cpu);
+	if (ramLine)
+		ramLine.setAttribute('points', ram);
+	if (area)
+		area.setAttribute('d', 'M0,' + (H - 1) + ' L' + cpu.replace(/ /g, ' L') + ' L' + W + ',' + (H - 1) + ' Z');
+
+	return top;
 }
 
 function pill(text) {
@@ -376,6 +587,7 @@ function ensureStyles() {
 --kd-dns:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='3' width='20' height='7' rx='2'/%3E%3Crect x='2' y='14' width='20' height='7' rx='2'/%3E%3Cpath d='M6 6.5h.01M6 17.5h.01'/%3E%3C/svg%3E");
 --kd-dhcp:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 6h13M8 12h13M8 18h13'/%3E%3Cpath d='M3 6h.01M3 12h.01M3 18h.01'/%3E%3C/svg%3E");
 --kd-reboot:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18.36 6.64a9 9 0 1 1-12.73 0'/%3E%3Cpath d='M12 2v10'/%3E%3C/svg%3E");
+--kd-pulse:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12h-4l-3 9L9 3l-3 9H2'/%3E%3C/svg%3E");
 }
 [data-page="admin-status-overview"] h2[name="content"]{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 #view .koka-dash{display:flex;flex-direction:column;gap:16px;color:var(--d)}
@@ -398,6 +610,7 @@ function ensureStyles() {
 .koka-card{grid-column:span 6;display:flex;flex-direction:column;border:1px solid color-mix(in srgb,var(--S) 70%,transparent);border-radius:16px;background:linear-gradient(180deg,color-mix(in srgb,var(--an) 94%,#fff 6%),var(--an));box-shadow:0 10px 30px rgba(2,8,23,.13),inset 0 1px 0 rgba(255,255,255,.04);overflow:hidden}
 .koka-card.span7{grid-column:span 7}
 .koka-card.span5{grid-column:span 5}
+.koka-card.span12{grid-column:span 12}
 .koka-card-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid color-mix(in srgb,var(--S) 45%,transparent)}
 .koka-card-ico{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--a) 13%,var(--V));color:var(--a);flex:0 0 auto}
 .koka-card-ico .koka-ico,.koka-card-ico.koka-ico{width:19px;height:19px}
@@ -450,6 +663,34 @@ function ensureStyles() {
 .koka-action:hover{background:color-mix(in srgb,var(--a) 10%,var(--V));border-color:color-mix(in srgb,var(--a) 35%,transparent);transform:translateY(-1px)}
 .koka-action .koka-ico{width:17px;height:17px;color:var(--a);flex:0 0 auto}
 .koka-action span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.koka-card-link{margin-inline-start:auto;flex:0 0 auto;font-size:.7rem;font-weight:700;color:var(--a);text-decoration:none;padding:4px 9px;border-radius:8px;border:1px solid color-mix(in srgb,var(--a) 30%,transparent);background:color-mix(in srgb,var(--a) 8%,transparent);transition:background .15s}
+.koka-card-link:hover{background:color-mix(in srgb,var(--a) 18%,transparent)}
+.koka-res{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start}
+.koka-res-main{min-width:0}
+.koka-res-head{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:.7rem;color:var(--c);margin-bottom:6px}
+.koka-res-legend{display:inline-flex;align-items:center;gap:6px}
+.koka-res-legend i{width:8px;height:8px;border-radius:3px;display:inline-block}
+.koka-res-legend i.cpu{background:var(--a)}
+.koka-res-legend i.ram{background:var(--O);margin-inline-start:4px}
+.koka-res-scale{font-size:.62rem;color:var(--c);opacity:.75;margin-inline-start:6px;font-variant-numeric:tabular-nums}
+.koka-res-chart{width:100%;height:118px;display:block}
+.koka-res-chart .area{fill:var(--a);opacity:.14}
+.koka-res-chart .cpu{stroke:var(--a);fill:none;stroke-width:1.4;vector-effect:non-scaling-stroke}
+.koka-res-chart .ram{stroke:var(--O);fill:none;stroke-width:1.4;vector-effect:non-scaling-stroke}
+.koka-res-side{display:flex;flex-direction:column;gap:9px;min-width:0}
+.koka-res-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.koka-res-stats>div{background:color-mix(in srgb,var(--V) 55%,transparent);border:1px solid color-mix(in srgb,var(--S) 45%,transparent);border-radius:10px;padding:8px 6px;text-align:center;min-width:0}
+.koka-res-stats b{display:block;font-size:.92rem;font-weight:700;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.koka-res-stats small{display:block;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:var(--c);margin-top:2px}
+.koka-res-stack{display:flex;height:10px;border-radius:6px;overflow:hidden;background:var(--E);gap:2px}
+.koka-res-stack i{display:block;height:100%;min-width:2px}
+.koka-res-list{display:flex;flex-direction:column;gap:4px;min-width:0}
+.koka-res-row{display:flex;align-items:center;gap:8px;font-size:.78rem;min-width:0}
+.koka-res-row i{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+.koka-res-row span{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--c)}
+.koka-res-row b{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.koka-res-row em{font-style:normal;font-size:.68rem;color:var(--c);min-width:3.7em;text-align:right;font-variant-numeric:tabular-nums}
+.koka-res-note{font-size:.68rem;color:var(--c);min-height:1em}
 .koka-empty{color:var(--c);font-size:.8rem;font-style:italic}
 .koka-vpns{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
 .koka-vpn{font-size:.7rem;padding:.2em .55em;border-radius:999px;background:color-mix(in srgb,var(--V) 60%,transparent);border:1px solid color-mix(in srgb,var(--S) 45%,transparent);color:var(--c);font-family:var(--M)}
@@ -467,8 +708,9 @@ function ensureStyles() {
 .koka-ico-dns{-webkit-mask-image:var(--kd-dns);mask-image:var(--kd-dns)}
 .koka-ico-dhcp{-webkit-mask-image:var(--kd-dhcp);mask-image:var(--kd-dhcp)}
 .koka-ico-reboot{-webkit-mask-image:var(--kd-reboot);mask-image:var(--kd-reboot)}
+.koka-ico-pulse{-webkit-mask-image:var(--kd-pulse);mask-image:var(--kd-pulse)}
 @media (max-width:1100px){.koka-card.span7,.koka-card.span5{grid-column:span 6}.koka-hero-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media (max-width:760px){.koka-card,.koka-card.span7,.koka-card.span5{grid-column:span 12}.koka-hero{grid-template-columns:1fr;padding:16px}.koka-hero-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.koka-grid{gap:12px}.koka-card{border-radius:14px}.koka-actions{grid-template-columns:1fr}.koka-hero-name{font-size:1.3rem}.koka-hero-actions .koka-action{flex:1 1 auto;justify-content:center}.koka-ring{width:84px;height:84px}}
+@media (max-width:760px){.koka-card,.koka-card.span7,.koka-card.span5{grid-column:span 12}.koka-hero{grid-template-columns:1fr;padding:16px}.koka-hero-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.koka-grid{gap:12px}.koka-card{border-radius:14px}.koka-actions{grid-template-columns:1fr}.koka-hero-name{font-size:1.3rem}.koka-hero-actions .koka-action{flex:1 1 auto;justify-content:center}.koka-ring{width:84px;height:84px}.koka-res{grid-template-columns:1fr}.koka-res-chart{height:96px}.koka-res-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (prefers-reduced-motion:reduce){.koka-action,.koka-bar i{transition:none}}
 	`));
 }
@@ -659,13 +901,73 @@ return view.extend({
 			action(L.url('admin/system/reboot'), 'koka-ico-reboot', _('Reboot'))
 		]));
 
+		/* Compact version of the Zapret Manager resource monitor. */
+		const res = card('koka-ico-pulse', 'Ресурсы', E('a', {
+			'class': 'koka-card-link',
+			'href': L.url('admin/services/zapret-manager/monitor'),
+			'title': 'Открыть монитор ресурсов Zapret Manager'
+		}, 'Подробнее'));
+		res.el.classList.add('span12');
+
+		const resChart = E('<svg class="koka-res-chart" viewBox="0 0 100 34" preserveAspectRatio="none">'
+			+ '<path class="area" d=""></path>'
+			+ '<polyline class="cpu" points=""></polyline>'
+			+ '<polyline class="ram" points=""></polyline>'
+			+ '</svg>');
+
+		const resStats = E('div', { 'class': 'koka-res-stats' }, [
+			E('div', {}, [ E('b', {}, '—'), E('small', {}, 'CPU') ]),
+			E('div', {}, [ E('b', {}, '—'), E('small', {}, 'ОЗУ') ]),
+			E('div', {}, [ E('b', {}, '—'), E('small', {}, 'Flash') ]),
+			E('div', {}, [ E('b', {}, '—'), E('small', {}, 'Темп.') ])
+		]);
+
+		const resStack = E('div', { 'class': 'koka-res-stack' });
+		const resList = E('div', { 'class': 'koka-res-list' });
+		const resNote = E('div', { 'class': 'koka-res-note' }, '—');
+
+		res.body.appendChild(E('div', { 'class': 'koka-res' }, [
+			E('div', { 'class': 'koka-res-main' }, [
+				E('div', { 'class': 'koka-res-head' }, [
+					E('span', {}, 'Последние 5 минут'),
+					E('span', { 'class': 'koka-res-legend' }, [
+						E('i', { 'class': 'cpu' }), 'CPU',
+						E('i', { 'class': 'ram' }), 'ОЗУ',
+						E('span', { 'class': 'koka-res-scale' }, '0–100%')
+					])
+				]),
+				resChart
+			]),
+			E('div', { 'class': 'koka-res-side' }, [
+				resStats,
+				resStack,
+				resList,
+				resNote
+			])
+		]));
+
+		refs.resChart = resChart;
+		refs.resArea = resChart.querySelector('.area');
+		refs.resCpuLine = resChart.querySelector('.cpu');
+		refs.resRamLine = resChart.querySelector('.ram');
+		refs.resScale = res.body.querySelector('.koka-res-scale');
+		refs.resCpu = resStats.children[0].firstElementChild;
+		refs.resRam = resStats.children[1].firstElementChild;
+		refs.resFlash = resStats.children[2].firstElementChild;
+		refs.resTemp = resStats.children[3].firstElementChild;
+		refs.resStack = resStack;
+		refs.resList = resList;
+		refs.resNote = resNote;
+		refs.resLink = res.el.firstElementChild.querySelector('.koka-card-link');
+
 		const grid = E('div', { 'class': 'koka-grid' }, [
 			internet.el,
 			system.el,
 			clients.el,
 			conn.el,
 			ports.el,
-			quick.el
+			quick.el,
+			res.el
 		]);
 
 		const dash = E('div', { 'class': 'koka-dash' }, [ hero, grid ]);
@@ -765,6 +1067,42 @@ return view.extend({
 		const load = Array.isArray(info.load) ? info.load : [0, 0, 0];
 		setText(refs.load, (load[0] / 65535).toFixed(2) + ' / ' + (load[1] / 65535).toFixed(2) + ' / ' + (load[2] / 65535).toFixed(2));
 		setText(refs.temp, temp == null ? '—' : temp.toFixed(1) + ' °C');
+
+		const resData = data.resources || {};
+		const resHist = resData.history || { cpu: [], ram: [], temp: [] };
+
+		const resTop = updateResChart(refs.resChart, resHist);
+
+		setText(refs.resScale, '0–' + resTop + '%');
+		setText(refs.resCpu, data.cpu == null ? '—' : Math.round(data.cpu) + '%');
+		setText(refs.resRam, Math.round(ramPercent) + '%');
+		setText(refs.resFlash, resData.flashTotal ? Math.round(pct(resData.flashUsed, resData.flashTotal)) + '%' : '—');
+		setText(refs.resTemp, resData.temp == null ? '—' : resData.temp.toFixed(1) + '°');
+
+		dom.content(refs.resStack, resData.stack && resData.stack.length ? resData.stack.map(function(c) {
+			return E('i', { 'style': 'width:' + c.pct.toFixed(2) + '%;background:' + c.color });
+		}) : E('i', { 'style': 'width:100%;background:var(--E)' }));
+
+		const resRows = (resData.components || []).slice();
+
+		if (resData.other)
+			resRows.push(resData.other);
+
+		dom.content(refs.resList, resRows.length ? resRows.map(function(c) {
+			return E('div', { 'class': 'koka-res-row' }, [
+				E('i', { 'style': 'background:' + c.color }),
+				E('span', {}, c.name),
+				E('b', {}, c.mem ? fmtBytes(c.mem) : '—'),
+				E('em', {}, c.cpu > 0.05 ? c.cpu.toFixed(1) + '%' : '')
+			]);
+		}) : E('div', { 'class': 'koka-empty' }, 'Нет данных по процессам'));
+
+		setText(refs.resNote, resData.available
+			? 'Память по сервисам · ' + fmtBytes(resData.procMem) + ' · обновление каждые 5 с'
+			: 'Zapret Manager недоступен — показаны только общие метрики');
+
+		if (refs.resLink)
+			refs.resLink.style.display = resData.available ? '' : 'none';
 
 		setText(refs.clientsCount, onlineClients + ' / ' + clients.length);
 		dom.content(refs.clients, clients.length ? clients.slice(0, 7).map(function(client) {

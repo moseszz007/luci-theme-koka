@@ -66,7 +66,7 @@ uci commit footstrap
 # Show the engine as "Koka" in System -> Design. The media path stays
 # /luci-static/footstrap: this is a skin over footstrap, not a fork.
 uci set luci.themes.Koka='/luci-static/footstrap'
-uci -q delete luci.themes.Footstrap
+uci -q delete luci.themes.Footstrap 2>/dev/null || true
 uci commit luci
 
 rm -f /tmp/luci-indexcache.*
