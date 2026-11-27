@@ -88,6 +88,11 @@ py -3 packages/build-packages.py --version 2026.11.27-r1
 `render_iface()`: иконка выбирается по `getProtocol()`. При обновлении LuCI
 файл нужно пересобрать из новой стоковой версии.
 
+## Связанные проекты
+
+- [luci-app-dnsproxy](https://github.com/moseszz007/luci-app-dnsproxy) — UI для dnsproxy
+  с редактируемыми upstream-списками и профилями.
+
 ## Благодарности
 
 - [luci-theme-footstrap](https://github.com/stangri/luci-theme-footstrap) — движок темы.
