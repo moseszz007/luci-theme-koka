@@ -63,6 +63,12 @@ uci set footstrap.settings.content_width='1440'
 uci set footstrap.settings.density='normal'
 uci commit footstrap
 
+# Show the engine as "Koka" in System -> Design. The media path stays
+# /luci-static/footstrap: this is a skin over footstrap, not a fork.
+uci set luci.themes.Koka='/luci-static/footstrap'
+uci -q delete luci.themes.Footstrap
+uci commit luci
+
 rm -f /tmp/luci-indexcache.*
 rm -rf /tmp/luci-modulecache
 

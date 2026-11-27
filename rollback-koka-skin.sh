@@ -26,6 +26,11 @@ uci set footstrap.settings.content_width='1280'
 uci set footstrap.settings.density='normal'
 uci commit footstrap
 
+# Put the original design label back.
+uci set luci.themes.Footstrap='/luci-static/footstrap'
+uci -q delete luci.themes.Koka
+uci commit luci
+
 rm -f /tmp/luci-indexcache.*
 rm -rf /tmp/luci-modulecache
 
