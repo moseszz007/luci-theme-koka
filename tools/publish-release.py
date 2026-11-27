@@ -21,8 +21,11 @@ BODY = """Koka Modern for LuCI - тёмный скин поверх luci-theme-f
   по памяти/CPU. Данные из `/proc`, без внешних сервисов
 - **Настройка дашборда**: скрыть/вернуть/переместить плашки, раскладка
   запоминается в браузере
-- **Стекло**: полупрозрачные панели с размытием и живой градиентный фон,
-  который меняется от статуса и цветов темы. Отключается в «Настроить»
+- **Стекло**: полупрозрачные панели, меню и модальные окна во всех разделах
+  LuCI; живой градиентный фон в единой сине-бирюзовой палитре. Отключается
+  в «Настроить»
+- **Раскладка**: сбалансированные пары плашек по высоте, перестановка
+  и скрытие сохраняются в браузере
 - В Система -> Дизайн тема называется **Koka** (движок остаётся footstrap)
 - Единый линейный набор иконок: меню, интерфейсы, порты, Wi-Fi
 - Иконки интерфейсов по протоколу: AmneziaWG, WireGuard, PPPoE, bridge, ZeroTier
@@ -30,12 +33,12 @@ BODY = """Koka Modern for LuCI - тёмный скин поверх luci-theme-f
 
 ## Установка (opkg)
 
-    opkg install luci-theme-koka_2026.11.27-r6_all.ipk
+    opkg install luci-theme-koka_2026.11.27-r7_all.ipk
 
 ## Установка (apk)
 
     cp luci-theme-koka.rsa.pub /etc/apk/keys/
-    apk add --allow-untrusted luci-theme-koka-2026.11.27-r6.apk
+    apk add --allow-untrusted luci-theme-koka-2026.11.27-r7.apk
 
 После установки пакет сам применяет скин и дашборд. Удаление пакета
 возвращает стоковый вид.
@@ -46,9 +49,9 @@ BODY = """Koka Modern for LuCI - тёмный скин поверх luci-theme-f
 
 def main():
     payload = {
-        'tag_name': 'v2026.11.27-r6',
+        'tag_name': 'v2026.11.27-r7',
         'target_commitish': 'main',
-        'name': 'Koka Modern 2026.11.27-r6',
+        'name': 'Koka Modern 2026.11.27-r7',
         'body': BODY,
         'draft': False,
         'prerelease': False,
@@ -65,8 +68,8 @@ def main():
     rid = rel['id']
 
     for path in (
-        'dist/luci-theme-koka_2026.11.27-r6_all.ipk',
-        'dist/luci-theme-koka-2026.11.27-r6.apk',
+        'dist/luci-theme-koka_2026.11.27-r7_all.ipk',
+        'dist/luci-theme-koka-2026.11.27-r7.apk',
         'dist/luci-theme-koka.rsa.pub',
     ):
         data = Path(path).read_bytes()

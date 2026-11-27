@@ -653,14 +653,14 @@ function ensureStyles() {
 }
 [data-page="admin-status-overview"] h2[name="content"]{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .koka-aurora{position:fixed;inset:0;z-index:-1;display:none;overflow:hidden;pointer-events:none}
-.koka-aurora::before{content:"";position:absolute;inset:0;background:linear-gradient(150deg,color-mix(in srgb,var(--koka-glow-b,#8ab4ff) 8%,transparent),transparent 45%,color-mix(in srgb,var(--koka-glow-c,#a78bfa) 10%,transparent))}
+.koka-aurora::before{content:"";position:absolute;inset:0;background:linear-gradient(150deg,color-mix(in srgb,var(--koka-glow-b,#8ab4ff) 8%,transparent),transparent 45%,color-mix(in srgb,var(--koka-glow-c,#2dd4bf) 10%,transparent))}
 body[data-page="admin-status-koka"] .koka-aurora{display:block}
 body[data-page="admin-status-koka"] .fs-main{background:transparent;position:relative;z-index:0;isolation:isolate}
 body[data-page="admin-status-koka"] .fs-footer{background:transparent}
-.koka-aurora i{position:absolute;width:85vmax;height:85vmax;border-radius:50%;opacity:.42;will-change:transform;background:radial-gradient(circle at 50% 50%,var(--koka-glow-a,#34d399) 0%,transparent 68%)}
+.koka-aurora i{position:absolute;width:85vmax;height:85vmax;border-radius:50%;opacity:.26;will-change:transform;background:radial-gradient(circle at 50% 50%,var(--koka-glow-a,#34d399) 0%,transparent 68%)}
 .koka-aurora i:nth-child(1){top:-22%;left:-12%;animation:koka-drift-a 32s ease-in-out infinite alternate}
 .koka-aurora i:nth-child(2){top:-18%;right:-16%;background:radial-gradient(circle at 50% 50%,var(--koka-glow-b,#8ab4ff) 0%,transparent 68%);animation:koka-drift-b 38s ease-in-out infinite alternate}
-.koka-aurora i:nth-child(3){bottom:-22%;left:22%;background:radial-gradient(circle at 50% 50%,var(--koka-glow-c,#a78bfa) 0%,transparent 68%);animation:koka-drift-c 44s ease-in-out infinite alternate}
+.koka-aurora i:nth-child(3){bottom:-22%;left:22%;background:radial-gradient(circle at 50% 50%,var(--koka-glow-c,#2dd4bf) 0%,transparent 68%);animation:koka-drift-c 44s ease-in-out infinite alternate}
 @keyframes koka-drift-a{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(6vw,7vh,0) scale(1.12)}}
 @keyframes koka-drift-b{from{transform:translate3d(0,0,0) scale(1.05)}to{transform:translate3d(-7vw,5vh,0) scale(.95)}}
 @keyframes koka-drift-c{from{transform:translate3d(0,0,0) scale(.95)}to{transform:translate3d(4vw,-6vh,0) scale(1.1)}}
@@ -682,7 +682,7 @@ body[data-page="admin-status-koka"] .fs-footer{background:transparent}
 .koka-metric b{display:block;font-size:1.02rem;font-weight:700;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .koka-hero-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;position:relative;z-index:1}
 .koka-hero-actions .koka-action{flex:0 0 auto}
-.koka-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;align-items:start}
+.koka-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
 .koka-card{grid-column:span 6;display:flex;flex-direction:column;border:1px solid color-mix(in srgb,var(--S) 70%,transparent);border-radius:16px;background:linear-gradient(180deg,color-mix(in srgb,var(--an) 94%,#fff 6%),var(--an));box-shadow:0 10px 30px rgba(2,8,23,.13),inset 0 1px 0 rgba(255,255,255,.04);overflow:hidden}
 .koka-card.span7{grid-column:span 7}
 .koka-card.span5{grid-column:span 5}
@@ -987,7 +987,7 @@ return view.extend({
 		system.body.appendChild(row('Температура', refs.temp));
 
 		const clients = card('koka-ico-users', 'Клиенты');
-		clients.el.classList.add('span7');
+		clients.el.classList.add('span5');
 		refs.clientsCount = E('span', { 'class': 'koka-pill muted' }, '—');
 		clients.el.firstElementChild.appendChild(refs.clientsCount);
 		refs.clients = E('div', { 'class': 'koka-clients' });
@@ -1015,7 +1015,7 @@ return view.extend({
 		ports.body.appendChild(refs.ports);
 
 		const quick = card('koka-ico-bolt', 'Быстрые действия');
-		quick.el.classList.add('span5');
+		quick.el.classList.add('span7');
 		quick.body.appendChild(E('div', { 'class': 'koka-actions' }, [
 			action(L.url('admin/network/network'), 'koka-ico-net2', _('Interfaces')),
 			action(L.url('admin/network/dhcp'), 'koka-ico-dhcp', _('DHCP')),
@@ -1199,8 +1199,8 @@ return view.extend({
 			resources: 'Ресурсы'
 		};
 
-		const LAYOUT_KEY = 'koka-dashboard-layout-v1';
-		const DEFAULT_ORDER = [ 'internet', 'system', 'clients', 'connections', 'ports', 'quick', 'resources' ];
+		const LAYOUT_KEY = 'koka-dashboard-layout-v2';
+		const DEFAULT_ORDER = [ 'internet', 'clients', 'ports', 'system', 'quick', 'connections', 'resources' ];
 		let layout = loadLayout();
 		let editing = false;
 		let dragId = null;
@@ -1247,8 +1247,6 @@ return view.extend({
 				grid.appendChild(cardEls[id]);
 				cardEls[id].style.display = layout.hidden.indexOf(id) >= 0 ? 'none' : '';
 			});
-
-			saveLayout();
 		}
 
 		function hideCard(id) {
@@ -1256,6 +1254,7 @@ return view.extend({
 				layout.hidden.push(id);
 
 			applyLayout();
+			saveLayout();
 			renderTray();
 		}
 
@@ -1271,6 +1270,7 @@ return view.extend({
 			order.splice(to, 0, id);
 			layout.order = order;
 			applyLayout();
+			saveLayout();
 		}
 
 		function renderTray() {
@@ -1291,6 +1291,7 @@ return view.extend({
 					'click': function() {
 						layout.hidden = layout.hidden.filter(function(x) { return x !== id; });
 						applyLayout();
+						saveLayout();
 						renderTray();
 					}
 				}, [ CARD_TITLES[id] || id, E('span', {}, ' +') ]));
@@ -1316,6 +1317,10 @@ return view.extend({
 				'class': 'koka-tray-reset',
 				'type': 'button',
 				'click': function() {
+					try {
+						localStorage.removeItem(LAYOUT_KEY);
+					} catch (e) {}
+
 					layout = { order: DEFAULT_ORDER.slice(), hidden: [] };
 					applyLayout();
 					renderTray();
@@ -1496,7 +1501,7 @@ return view.extend({
 
 		document.body.style.setProperty('--koka-glow-a', glow);
 		document.body.style.setProperty('--koka-glow-b', accent);
-		document.body.style.setProperty('--koka-glow-c', '#a78bfa');
+		document.body.style.setProperty('--koka-glow-c', '#2dd4bf');
 
 		setPill(refs.heroPill, status, statusText);
 		setPill(refs.netPill, status, statusText);

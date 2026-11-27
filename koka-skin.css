@@ -7,22 +7,22 @@
 }
 
 :root:not([data-palette])[data-darkmode="true"] {
-	--H: #0a0f1c !important;
-	--an: #111827 !important;
-	--V: #172033 !important;
-	--S: #29354d !important;
-	--d: #e6edf7 !important;
-	--c: #9fb0c9 !important;
-	--w: #7f8ea8 !important;
-	--E: #1d2942 !important;
-	--J: #8ab4ff;
-	--O: #34d399;
+	--H: #070b15 !important;
+	--an: #0d1626 !important;
+	--V: #131f33 !important;
+	--S: #26344b !important;
+	--d: #e8eefb !important;
+	--c: #9db0cc !important;
+	--w: #7c8ba6 !important;
+	--E: #1b2940 !important;
+	--J: #7aa2ff;
+	--O: #4ade80;
 	--R: #fbbf24;
 	--K: #fb7185;
-	--z: #07101f;
-	--ah: #07101f;
-	--am: #07101f;
-	--U: #07101f;
+	--z: #070b15;
+	--ah: #070b15;
+	--am: #070b15;
+	--U: #070b15;
 }
 
 :root:not([data-palette])[data-darkmode="false"] {
@@ -48,9 +48,10 @@
 html:not([data-palette])[data-darkmode="true"],
 html:not([data-palette])[data-darkmode="true"] body {
 	background:
-		radial-gradient(1200px 700px at 85% -10%, rgba(124, 92, 255, .22), transparent 60%),
-		radial-gradient(900px 600px at -10% 110%, rgba(34, 211, 238, .12), transparent 55%),
-		linear-gradient(180deg, #0a0f1c, #0b1222 60%, #0a0f1c) !important;
+		radial-gradient(1200px 800px at 12% -10%, rgba(122, 162, 255, .20), transparent 60%),
+		radial-gradient(1000px 700px at 90% 0%, rgba(139, 92, 246, .13), transparent 60%),
+		radial-gradient(900px 700px at 50% 110%, rgba(45, 212, 191, .10), transparent 60%),
+		linear-gradient(180deg, #070b15, #0a1120 60%, #070b15) !important;
 }
 
 html:not([data-palette])[data-darkmode="false"],
@@ -61,15 +62,78 @@ html:not([data-palette])[data-darkmode="false"] body {
 		linear-gradient(180deg, #f6f9ff, #eef3fb 60%, #f6f9ff) !important;
 }
 
-/* Softer, deeper cards. */
+/* Glass panels across the whole theme. */
+.fs-main,
+.fs-footer {
+	background: transparent !important;
+}
+
 #view .cbi-section {
-	background: linear-gradient(180deg,
-		color-mix(in srgb, var(--an) 94%, #fff 6%),
-		var(--an)) !important;
-	border-color: color-mix(in srgb, var(--S) 80%, transparent) !important;
+	background: linear-gradient(160deg,
+		color-mix(in srgb, var(--an) 64%, transparent),
+		color-mix(in srgb, var(--an) 42%, transparent)) !important;
+	border-color: rgba(255, 255, 255, .08) !important;
 	box-shadow:
-		0 12px 32px rgba(2, 8, 23, .16),
-		inset 0 1px 0 rgba(255, 255, 255, .04) !important;
+		0 18px 40px rgba(2, 8, 23, .22),
+		inset 0 1px 0 rgba(255, 255, 255, .06) !important;
+	-webkit-backdrop-filter: blur(16px) saturate(1.2);
+	backdrop-filter: blur(16px) saturate(1.2);
+}
+
+.fs-sidebar {
+	background: color-mix(in srgb, var(--an) 74%, transparent) !important;
+	border-color: rgba(255, 255, 255, .08) !important;
+	-webkit-backdrop-filter: blur(18px) saturate(1.2);
+	backdrop-filter: blur(18px) saturate(1.2);
+}
+
+.modal {
+	background: color-mix(in srgb, var(--an) 80%, transparent) !important;
+	border-color: rgba(255, 255, 255, .12) !important;
+	-webkit-backdrop-filter: blur(20px) saturate(1.2);
+	backdrop-filter: blur(20px) saturate(1.2);
+}
+
+.modal-overlay {
+	-webkit-backdrop-filter: blur(4px);
+	backdrop-filter: blur(4px);
+}
+
+.cbi-page-actions {
+	background: color-mix(in srgb, var(--an) 58%, transparent) !important;
+	-webkit-backdrop-filter: blur(14px);
+	backdrop-filter: blur(14px);
+}
+
+.ifacebox,
+.alert-message {
+	background: color-mix(in srgb, var(--an) 60%, transparent) !important;
+	-webkit-backdrop-filter: blur(12px);
+	backdrop-filter: blur(12px);
+}
+
+ul.dropdown,
+.cbi-dropdown > ul.dropdown {
+	background: color-mix(in srgb, var(--an) 84%, transparent) !important;
+	-webkit-backdrop-filter: blur(16px) saturate(1.2);
+	backdrop-filter: blur(16px) saturate(1.2);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+	#view .cbi-section,
+	.fs-sidebar,
+	.modal {
+		background: var(--an) !important;
+	}
+}
+
+@media (max-width: 767px) {
+	#view .cbi-section,
+	.fs-sidebar,
+	.modal {
+		-webkit-backdrop-filter: blur(10px) saturate(1.15);
+		backdrop-filter: blur(10px) saturate(1.15);
+	}
 }
 
 /* Page title: accent rail instead of a plain heading card. */
