@@ -215,6 +215,16 @@ const ZM_BY_ID = {};
 
 ZM_COMPS.forEach(function(c) { ZM_BY_ID[c.id] = c; });
 
+const KOKA_SERVICES = [
+	{ id: 'dnsproxy', name: 'DNS Proxy', rx: /^dnsproxy$/, href: 'admin/services/dnsproxy' },
+	{ id: 'dnsmasq', name: 'DNS (dnsmasq)', rx: /^dnsmasq$/, href: 'admin/network/dhcp' },
+	{ id: 'zapret', name: 'Zapret', rx: /^nfqws$|^tpws$/, href: 'admin/services/zapret-manager/strategy' },
+	{ id: 'steer', name: 'Steer', rx: /^steer/, href: 'admin/services/zapret-manager/steer' },
+	{ id: 'zerotier', name: 'ZeroTier', rx: /^zerotier/, href: 'admin/network/network' },
+	{ id: 'ssh', name: 'SSH', rx: /^dropbear$/, href: 'admin/system/admin' },
+	{ id: 'luci', name: 'LuCI', rx: /^uhttpd$|^rpcd$/, href: 'admin/status/overview' }
+];
+
 function zmCompOf(name, ppid) {
 	if (ppid === 2 || /^(kworker|ksoftirqd|kthreadd|migration|rcu_|irq\/|watchdog|cpuhp)/.test(name))
 		return ZM_BY_ID.kernel;
@@ -650,6 +660,7 @@ function ensureStyles() {
 --kd-reboot:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18.36 6.64a9 9 0 1 1-12.73 0'/%3E%3Cpath d='M12 2v10'/%3E%3C/svg%3E");
 --kd-pulse:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12h-4l-3 9L9 3l-3 9H2'/%3E%3C/svg%3E");
 --kd-sliders:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3'/%3E%3Cpath d='M14 2v4M8 10v4M16 18v4'/%3E%3C/svg%3E");
+--kd-services:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='3' width='20' height='8' rx='2'/%3E%3Crect x='2' y='13' width='20' height='8' rx='2'/%3E%3Cpath d='M6 7h.01M6 17h.01'/%3E%3C/svg%3E");
 }
 [data-page="admin-status-overview"] h2[name="content"]{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .koka-aurora{position:fixed;inset:0;z-index:-1;display:none;overflow:hidden;pointer-events:none}
@@ -734,6 +745,12 @@ button.koka-action{font:inherit;cursor:pointer}
 .koka-bar i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--a),#a78bfa);transition:width .4s ease}
 .koka-bar.good i{background:linear-gradient(90deg,var(--O),#14b8a6)}
 .koka-bar.warn i{background:linear-gradient(90deg,var(--R),#f97316)}
+.koka-services{display:flex;flex-direction:column;gap:0;min-width:0}
+.koka-service{display:flex;align-items:center;gap:10px;padding:7px 4px;border-bottom:1px solid color-mix(in srgb,var(--S) 35%,transparent);text-decoration:none;color:var(--d);min-width:0;border-radius:0}
+.koka-service:last-child{border-bottom:0}
+.koka-service:hover{background:color-mix(in srgb,var(--a) 9%,transparent);border-radius:8px}
+.koka-service-name{flex:1 1 auto;font-size:.8rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.koka-service-meta{font-size:.66rem;color:var(--c);font-variant-numeric:tabular-nums;white-space:nowrap}
 .koka-clients{display:flex;flex-direction:column;gap:2px}
 .koka-client{display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid color-mix(in srgb,var(--S) 35%,transparent);min-width:0}
 .koka-client:last-child{border-bottom:0}
@@ -821,6 +838,7 @@ button.koka-action{font:inherit;cursor:pointer}
 .koka-ico-reboot{-webkit-mask-image:var(--kd-reboot);mask-image:var(--kd-reboot)}
 .koka-ico-pulse{-webkit-mask-image:var(--kd-pulse);mask-image:var(--kd-pulse)}
 .koka-ico-sliders{-webkit-mask-image:var(--kd-sliders);mask-image:var(--kd-sliders)}
+.koka-ico-services{-webkit-mask-image:var(--kd-services);mask-image:var(--kd-services)}
 @media (max-width:1100px){.koka-card.span7,.koka-card.span5{grid-column:span 6}.koka-hero-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.koka-gauges{grid-template-columns:repeat(2,minmax(0,1fr))}.koka-gauge:nth-child(3){border-inline-start:0;border-top:1px solid color-mix(in srgb,var(--S) 25%,transparent)}.koka-gauge:nth-child(4){border-top:1px solid color-mix(in srgb,var(--S) 25%,transparent)}}
 @media (max-width:760px){.koka-card,.koka-card.span7,.koka-card.span5{grid-column:span 12}.koka-hero{grid-template-columns:1fr;padding:16px}.koka-hero-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.koka-grid{gap:12px}.koka-card{border-radius:14px}.koka-actions{grid-template-columns:1fr}.koka-hero-name{font-size:1.3rem}.koka-hero-actions .koka-action{flex:1 1 auto;justify-content:center}.koka-sys-top .koka-ring{width:84px;height:84px}.koka-gauges{grid-template-columns:repeat(2,minmax(0,1fr))}.koka-res-mid{grid-template-columns:1fr}.koka-res-chart{height:96px}.koka-proc-row{grid-template-columns:minmax(0,1fr) 50px 72px}.koka-proc-comp,.koka-proc-head span:nth-child(2){display:none}}
 @media (prefers-reduced-motion:reduce){.koka-action,.koka-bar i{transition:none}.koka-aurora i{animation:none}}
@@ -1000,14 +1018,10 @@ return view.extend({
 			E('span', {}, 'Все адреса')
 		]));
 
-		const conn = card('koka-ico-link', 'Соединения');
-		conn.el.classList.add('span5');
-		refs.ctVal = E('span', { 'class': 'koka-value' }, '—');
-		conn.body.appendChild(row('Активные', refs.ctVal));
-		refs.ctFill = E('i');
-		conn.body.appendChild(E('div', { 'class': 'koka-bar' }, [ refs.ctFill ]));
-		refs.ctHint = E('div', { 'class': 'koka-empty' }, '—');
-		conn.body.appendChild(refs.ctHint);
+		const services = card('koka-ico-services', 'Сервисы');
+		services.el.classList.add('span5');
+		refs.services = E('div', { 'class': 'koka-services' });
+		services.body.appendChild(refs.services);
 
 		const ports = card('koka-ico-plug', 'Порты');
 		ports.el.classList.add('span7');
@@ -1183,7 +1197,7 @@ return view.extend({
 			internet: internet.el,
 			system: system.el,
 			clients: clients.el,
-			connections: conn.el,
+			services: services.el,
 			ports: ports.el,
 			quick: quick.el,
 			resources: res.el
@@ -1193,14 +1207,14 @@ return view.extend({
 			internet: 'Интернет',
 			system: 'Система',
 			clients: 'Клиенты',
-			connections: 'Соединения',
+			services: 'Сервисы',
 			ports: 'Порты',
 			quick: 'Быстрые действия',
 			resources: 'Ресурсы'
 		};
 
-		const LAYOUT_KEY = 'koka-dashboard-layout-v2';
-		const DEFAULT_ORDER = [ 'internet', 'clients', 'ports', 'system', 'quick', 'connections', 'resources' ];
+		const LAYOUT_KEY = 'koka-dashboard-layout-v3';
+		const DEFAULT_ORDER = [ 'internet', 'clients', 'ports', 'system', 'quick', 'services', 'resources' ];
 		let layout = loadLayout();
 		let editing = false;
 		let dragId = null;
@@ -1629,10 +1643,24 @@ return view.extend({
 			]);
 		}) : E('div', { 'class': 'koka-empty' }, 'Нет DHCP-аренд'));
 
-		const ctPct = pct(data.ctCount, data.ctMax);
-		setText(refs.ctVal, data.ctMax ? data.ctCount + ' / ' + data.ctMax : String(data.ctCount));
-		refs.ctFill.style.width = ctPct + '%';
-		setText(refs.ctHint, data.ctMax ? Math.round(ctPct) + '%' : '—');
+		const procs = (data.resources && data.resources.processes) || [];
+
+		dom.content(refs.services, procs.length ? KOKA_SERVICES.map(function(s) {
+			const matches = procs.filter(function(p) { return s.rx.test(p.name); });
+			const pid = matches.length ? matches[0].pid : null;
+
+			return E('a', {
+				'class': 'koka-service',
+				'href': L.url(s.href),
+				'title': s.name
+			}, [
+				E('span', { 'class': 'koka-dot' + (pid ? ' on' : '') }),
+				E('span', { 'class': 'koka-service-name' }, s.name),
+				E('span', { 'class': 'koka-service-meta' }, pid
+					? (matches.length > 1 ? matches.length + ' проц.' : 'PID ' + pid)
+					: 'остановлен')
+			]);
+		}) : E('div', { 'class': 'koka-empty' }, 'Нет данных по процессам'));
 
 		dom.content(refs.ports, data.ports.length ? data.ports.map(function(port) {
 			const wanL2 = wan && wan.getL2Device ? wan.getL2Device() : null;

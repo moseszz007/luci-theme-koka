@@ -16,6 +16,8 @@ HEADERS = {
 BODY = """Koka Modern for LuCI - тёмный скин поверх luci-theme-footstrap.
 
 - Keenetic-подобный дашборд: Статус -> Дашборд (Обзор не тронут)
+- Карточка **Сервисы**: статус DNS Proxy, dnsmasq, Zapret, Steer, ZeroTier,
+  SSH и LuCI с PID/количеством процессов
 - Карточка **Ресурсы**: кольцевые индикаторы CPU/температуры/памяти/флеша,
   5-минутный график, память по сервисам и список процессов с сортировкой
   по памяти/CPU. Данные из `/proc`, без внешних сервисов
@@ -33,12 +35,12 @@ BODY = """Koka Modern for LuCI - тёмный скин поверх luci-theme-f
 
 ## Установка (opkg)
 
-    opkg install luci-theme-koka_2026.11.27-r8_all.ipk
+    opkg install luci-theme-koka_2026.11.27-r9_all.ipk
 
 ## Установка (apk)
 
     cp luci-theme-koka.rsa.pub /etc/apk/keys/
-    apk add --allow-untrusted luci-theme-koka-2026.11.27-r8.apk
+    apk add --allow-untrusted luci-theme-koka-2026.11.27-r9.apk
 
 После установки пакет сам применяет скин и дашборд. Удаление пакета
 возвращает стоковый вид.
@@ -49,9 +51,9 @@ BODY = """Koka Modern for LuCI - тёмный скин поверх luci-theme-f
 
 def main():
     payload = {
-        'tag_name': 'v2026.11.27-r8',
+        'tag_name': 'v2026.11.27-r9',
         'target_commitish': 'main',
-        'name': 'Koka Modern 2026.11.27-r8',
+        'name': 'Koka Modern 2026.11.27-r9',
         'body': BODY,
         'draft': False,
         'prerelease': False,
@@ -68,8 +70,8 @@ def main():
     rid = rel['id']
 
     for path in (
-        'dist/luci-theme-koka_2026.11.27-r8_all.ipk',
-        'dist/luci-theme-koka-2026.11.27-r8.apk',
+        'dist/luci-theme-koka_2026.11.27-r9_all.ipk',
+        'dist/luci-theme-koka-2026.11.27-r9.apk',
         'dist/luci-theme-koka.rsa.pub',
     ):
         data = Path(path).read_bytes()

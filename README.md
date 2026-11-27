@@ -17,6 +17,9 @@
 - **Дашборд** в духе Keenetic OS: роутер, WAN, клиенты, CPU/ОЗУ/температура, порты,
   быстрые действия, живой график трафика. Отдельный пункт **Статус → Дашборд**;
   штатный «Обзор» не трогается.
+- **Карточка «Сервисы»** — состояние DNS Proxy, dnsmasq, Zapret, Steer,
+  ZeroTier, SSH и LuCI с PID/количеством процессов и быстрым переходом
+  на нужную страницу.
 - **Карточка «Ресурсы»** — кольцевые индикаторы CPU/температуры/памяти/флеша,
   5-минутный график, разбивка памяти по сервисам и список процессов с сортировкой
   по памяти или CPU. Данные собираются из `/proc`, внешние сервисы не нужны.
@@ -64,10 +67,10 @@ sh /root/koka-skin/install-koka-dashboard.sh
 и дашборд, а при удалении возвращает сток.
 
 ```sh
-opkg install luci-theme-koka_2026.11.27-r8_all.ipk
+opkg install luci-theme-koka_2026.11.27-r9_all.ipk
 # или для apk:
 cp luci-theme-koka.rsa.pub /etc/apk/keys/
-apk add --allow-untrusted luci-theme-koka-2026.11.27-r8.apk
+apk add --allow-untrusted luci-theme-koka-2026.11.27-r9.apk
 ```
 
 ## Откат
@@ -103,7 +106,7 @@ sh /root/koka-skin/rollback-koka-skin.sh
 ```sh
 py -3 make-koka-icons.py       # пересобрать icons/*.svg
 py -3 make-koka-interfaces.py  # пересобрать koka-interfaces.js из стокового LuCI
-py -3 packages/build-packages.py --version 2026.11.27-r8
+py -3 packages/build-packages.py --version 2026.11.27-r9
 ```
 
 `koka-interfaces.js` — это стоковый `view/network/interfaces.js` с патчем
