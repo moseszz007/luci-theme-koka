@@ -1,0 +1,33 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Koka icons</title>
+<style>
+  body{background:#0b1220;color:#A9B8D8;font:14px/1.4 system-ui,sans-serif;padding:24px}
+  h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#6EA8FE;margin:24px 0 10px}
+  .grid{display:flex;flex-wrap:wrap;gap:18px}
+  figure{margin:0;width:76px;text-align:center}
+  img{display:block;margin:0 auto 6px;background:#111a2e;border:1px solid #223052;border-radius:10px;padding:8px}
+  figcaption{font-size:11px;color:#7f90b3;word-break:break-all}
+  .sm img{width:16px;height:16px;padding:4px}
+  .sm figure{width:60px}
+</style>
+<h2>Interface icons · 32 px</h2>
+<div class="grid" id="big"></div>
+<h2>Same icons · 16 px</h2>
+<div class="grid sm" id="small"></div>
+<script>
+const names = [
+ 'ethernet','ethernet_disabled','bridge','bridge_disabled','alias','alias_disabled',
+ 'switch','switch_disabled','vlan','vlan_disabled','vrf','vrf_disabled','tunnel','tunnel_disabled',
+ 'wireguard','wireguard_disabled','amneziawg','amneziawg_disabled','wifi','wifi_disabled',
+ 'port_up','port_down','signal-000-000','signal-000-025','signal-025-050','signal-050-075',
+ 'signal-075-100','signal-none','loading'
+];
+for (const box of [document.getElementById('big'), document.getElementById('small')]) {
+  for (const n of names) {
+    const f = document.createElement('figure');
+    f.innerHTML = `<img src="icons/${n}.svg" alt=""><figcaption>${n}</figcaption>`;
+    box.appendChild(f);
+  }
+}
+</script>
