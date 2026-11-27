@@ -163,7 +163,7 @@ html:not([data-palette])[data-darkmode="false"] body {
 
 .koka-glass ul.dropdown,
 .koka-glass .cbi-dropdown > ul.dropdown {
-	background: color-mix(in srgb, var(--an) 90%, transparent) !important;
+	background: color-mix(in srgb, var(--an) 85%, transparent) !important;
 	-webkit-backdrop-filter: blur(18px) saturate(1.15);
 	backdrop-filter: blur(18px) saturate(1.15);
 }
@@ -446,9 +446,7 @@ button.cbi-button-reset::before {
 
 .koka-glass .fs-sidebar ul.nav ul,
 .koka-glass #topmenu ul {
-	background: linear-gradient(160deg,
-		color-mix(in srgb, var(--an) 98%, #000 2%),
-		color-mix(in srgb, var(--an) 96%, #000 4%)) !important;
+	background: color-mix(in srgb, var(--an) 85%, transparent) !important;
 	border-color: rgba(255, 255, 255, .10) !important;
 	box-shadow: 0 20px 46px rgba(2, 8, 23, .45) !important;
 	-webkit-backdrop-filter: blur(18px) saturate(1.15) !important;
