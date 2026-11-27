@@ -398,7 +398,7 @@ def verify_apk(data, version, public_key):
 
 def main():
     parser = argparse.ArgumentParser(description='Build luci-theme-koka ipk and apk packages')
-    parser.add_argument('--version', default='2026.11.27-r14', help='package version (default: 2026.11.27-r14)')
+    parser.add_argument('--version', default='2026.11.27-r15', help='package version (default: 2026.11.27-r15)')
     parser.add_argument('--outdir', default='dist', help='output directory (default: dist)')
     parser.add_argument('--keydir', default='keys', help='signing key directory (default: keys)')
     parser.add_argument('--epoch', type=int, default=int(os.environ.get('SOURCE_DATE_EPOCH', time.time())),
