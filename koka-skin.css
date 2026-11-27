@@ -171,9 +171,9 @@ html:not([data-palette])[data-darkmode="false"] body {
 
 .koka-glass ul.dropdown,
 .koka-glass .cbi-dropdown > ul.dropdown {
-	background: color-mix(in srgb, var(--an) 93%, transparent) !important;
-	-webkit-backdrop-filter: blur(18px) saturate(1.15);
-	backdrop-filter: blur(18px) saturate(1.15);
+	background: color-mix(in srgb, color-mix(in srgb, var(--an) 94%, #fff 6%) 82%, transparent) !important;
+	-webkit-backdrop-filter: blur(20px) saturate(1.2);
+	backdrop-filter: blur(20px) saturate(1.2);
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -454,11 +454,13 @@ button.cbi-button-reset::before {
 
 .koka-glass .fs-sidebar ul.nav ul,
 .koka-glass #topmenu ul {
-	background: color-mix(in srgb, var(--an) 93%, transparent) !important;
-	border-color: rgba(255, 255, 255, .10) !important;
-	box-shadow: 0 20px 46px rgba(2, 8, 23, .45) !important;
-	-webkit-backdrop-filter: blur(18px) saturate(1.15) !important;
-	backdrop-filter: blur(18px) saturate(1.15) !important;
+	background: linear-gradient(160deg,
+		color-mix(in srgb, color-mix(in srgb, var(--an) 90%, #fff 10%) 80%, transparent),
+		color-mix(in srgb, color-mix(in srgb, var(--an) 94%, #fff 6%) 74%, transparent)) !important;
+	border-color: rgba(255, 255, 255, .14) !important;
+	box-shadow: 0 18px 46px rgba(2, 8, 23, .32) !important;
+	-webkit-backdrop-filter: blur(20px) saturate(1.2) !important;
+	backdrop-filter: blur(20px) saturate(1.2) !important;
 }
 
 /* ==== Koka polish: one token set, one radius scale, consistent cursors ==== */
