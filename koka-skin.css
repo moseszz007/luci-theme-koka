@@ -483,6 +483,29 @@ button.cbi-button-reset::before {
 }
 .koka-menu-frost.on { opacity: 1; }
 
+/* The current page inside a menu: a glass frame, not just bold text. */
+#topmenu ul a.active,
+#topmenu ul a[aria-current="page"],
+.fs-sidebar ul.nav ul a.active,
+.fs-sidebar ul.nav ul a[aria-current="page"] {
+	background: color-mix(in srgb, var(--fs-accent) 18%, transparent) !important;
+	color: var(--fs-text) !important;
+	border-radius: var(--fs-radius-sm) !important;
+	box-shadow:
+		inset 0 0 0 1px color-mix(in srgb, var(--fs-accent) 55%, transparent),
+		0 0 0 1px color-mix(in srgb, #ffffff 8%, transparent),
+		0 0 18px color-mix(in srgb, var(--fs-accent) 22%, transparent) !important;
+}
+
+/* The active top-level section gets the same, quieter treatment. */
+#topmenu > li.active > a,
+.fs-sidebar ul.nav > li.active > a {
+	background: color-mix(in srgb, var(--fs-accent) 13%, transparent) !important;
+	color: var(--fs-text) !important;
+	border-radius: var(--fs-radius-sm) !important;
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fs-accent) 32%, transparent) !important;
+}
+
 /* ==== Koka polish: one token set, one radius scale, consistent cursors ==== */
 :root {
 	--fs-accent: var(--J);
