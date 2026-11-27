@@ -68,7 +68,7 @@ html:not([data-palette])[data-darkmode="false"] body {
 	background: transparent !important;
 }
 
-#view .cbi-section {
+.koka-glass #view .cbi-section {
 	background: linear-gradient(160deg,
 		color-mix(in srgb, var(--an) 64%, transparent),
 		color-mix(in srgb, var(--an) 42%, transparent)) !important;
@@ -80,57 +80,57 @@ html:not([data-palette])[data-darkmode="false"] body {
 	backdrop-filter: blur(16px) saturate(1.2);
 }
 
-.fs-sidebar {
+.koka-glass .fs-sidebar {
 	background: color-mix(in srgb, var(--an) 74%, transparent) !important;
 	border-color: rgba(255, 255, 255, .08) !important;
 	-webkit-backdrop-filter: blur(18px) saturate(1.2);
 	backdrop-filter: blur(18px) saturate(1.2);
 }
 
-.modal {
+.koka-glass .modal {
 	background: color-mix(in srgb, var(--an) 80%, transparent) !important;
 	border-color: rgba(255, 255, 255, .12) !important;
 	-webkit-backdrop-filter: blur(20px) saturate(1.2);
 	backdrop-filter: blur(20px) saturate(1.2);
 }
 
-.modal-overlay {
+.koka-glass .modal-overlay {
 	-webkit-backdrop-filter: blur(4px);
 	backdrop-filter: blur(4px);
 }
 
-.cbi-page-actions {
+.koka-glass .cbi-page-actions {
 	background: color-mix(in srgb, var(--an) 58%, transparent) !important;
 	-webkit-backdrop-filter: blur(14px);
 	backdrop-filter: blur(14px);
 }
 
-.ifacebox,
-.alert-message {
+.koka-glass .ifacebox,
+.koka-glass .alert-message {
 	background: color-mix(in srgb, var(--an) 60%, transparent) !important;
 	-webkit-backdrop-filter: blur(12px);
 	backdrop-filter: blur(12px);
 }
 
-ul.dropdown,
-.cbi-dropdown > ul.dropdown {
+.koka-glass ul.dropdown,
+.koka-glass .cbi-dropdown > ul.dropdown {
 	background: color-mix(in srgb, var(--an) 84%, transparent) !important;
 	-webkit-backdrop-filter: blur(16px) saturate(1.2);
 	backdrop-filter: blur(16px) saturate(1.2);
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-	#view .cbi-section,
-	.fs-sidebar,
-	.modal {
+	.koka-glass #view .cbi-section,
+	.koka-glass .fs-sidebar,
+	.koka-glass .modal {
 		background: var(--an) !important;
 	}
 }
 
 @media (max-width: 767px) {
-	#view .cbi-section,
-	.fs-sidebar,
-	.modal {
+	.koka-glass #view .cbi-section,
+	.koka-glass .fs-sidebar,
+	.koka-glass .modal {
 		-webkit-backdrop-filter: blur(10px) saturate(1.15);
 		backdrop-filter: blur(10px) saturate(1.15);
 	}

@@ -6,6 +6,11 @@
 
 	var MARK = 'kokaicons';
 
+	/* Glass preference applies to every page before first paint. */
+	try {
+		document.documentElement.classList.toggle('koka-glass', localStorage.getItem('koka-glass') !== 'off');
+	} catch (e) {}
+
 	function bust(img) {
 		var src = img.getAttribute('src');
 		if (!src || src.indexOf('/icons/') < 0 || src.indexOf(MARK) >= 0)

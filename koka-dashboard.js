@@ -64,7 +64,7 @@ function ensureAurora() {
 		(document.getElementById('maincontent') || document.body).appendChild(aurora);
 	}
 
-	document.body.classList.toggle('koka-glass', glassPref());
+	document.documentElement.classList.toggle('koka-glass', glassPref());
 }
 
 function readFile(path) {
@@ -1301,9 +1301,9 @@ return view.extend({
 				'class': 'koka-tray-toggle',
 				'type': 'button',
 				'click': function() {
-					const on = !document.body.classList.contains('koka-glass');
+					const on = !document.documentElement.classList.contains('koka-glass');
 
-					document.body.classList.toggle('koka-glass', on);
+					document.documentElement.classList.toggle('koka-glass', on);
 
 					try {
 						localStorage.setItem('koka-glass', on ? 'on' : 'off');
@@ -1311,7 +1311,7 @@ return view.extend({
 
 					renderTray();
 				}
-			}, 'Стекло: ' + (document.body.classList.contains('koka-glass') ? 'вкл' : 'выкл')));
+			}, 'Стекло: ' + (document.documentElement.classList.contains('koka-glass') ? 'вкл' : 'выкл')));
 
 			tray.appendChild(E('button', {
 				'class': 'koka-tray-reset',
