@@ -17,9 +17,9 @@
 - **Дашборд** в духе Keenetic OS: роутер, WAN, клиенты, CPU/ОЗУ/температура, порты,
   быстрые действия, живой график трафика. Отдельный пункт **Статус → Дашборд**;
   штатный «Обзор» не трогается.
-- **Карточка «Ресурсы»** — компактная версия монитора Zapret Manager: CPU/ОЗУ/Flash,
-  5-минутный график и разбивка памяти по сервисам. Если Zapret Manager не установлен,
-  карточка показывает только общие метрики.
+- **Карточка «Ресурсы»** — кольцевые индикаторы CPU/температуры/памяти/флеша,
+  5-минутный график, разбивка памяти по сервисам и список процессов с сортировкой
+  по памяти или CPU. Использует монитор Zapret Manager, если он установлен.
 - **Единые иконки**: меню, кнопки действий, интерфейсы, порты, Wi-Fi-сигнал.
   Линейный набор в стиле Lucide, без иконочных шрифтов.
 - **Иконки интерфейсов по протоколу**: AmneziaWG/WireGuard, bridge, PPPoE,
@@ -58,10 +58,10 @@ sh /root/koka-skin/install-koka-dashboard.sh
 и дашборд, а при удалении возвращает сток.
 
 ```sh
-opkg install luci-theme-koka_2026.11.27-r3_all.ipk
+opkg install luci-theme-koka_2026.11.27-r4_all.ipk
 # или для apk:
 cp luci-theme-koka.rsa.pub /etc/apk/keys/
-apk add --allow-untrusted luci-theme-koka-2026.11.27-r3.apk
+apk add --allow-untrusted luci-theme-koka-2026.11.27-r4.apk
 ```
 
 ## Откат
@@ -90,7 +90,7 @@ sh /root/koka-skin/rollback-koka-skin.sh
 ```sh
 py -3 make-koka-icons.py       # пересобрать icons/*.svg
 py -3 make-koka-interfaces.py  # пересобрать koka-interfaces.js из стокового LuCI
-py -3 packages/build-packages.py --version 2026.11.27-r3
+py -3 packages/build-packages.py --version 2026.11.27-r4
 ```
 
 `koka-interfaces.js` — это стоковый `view/network/interfaces.js` с патчем
