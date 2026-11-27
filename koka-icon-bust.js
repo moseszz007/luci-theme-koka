@@ -50,4 +50,20 @@
 		attributes: true,
 		attributeFilter: ['src']
 	});
+
+	function addAurora() {
+		var host = document.getElementById('maincontent') || document.body;
+		if (!host || host.querySelector('.koka-aurora'))
+			return;
+		var aurora = document.createElement('div');
+		aurora.className = 'koka-aurora';
+		aurora.setAttribute('aria-hidden', 'true');
+		aurora.innerHTML = '<i></i><i></i><i></i>';
+		host.appendChild(aurora);
+	}
+
+	if (document.readyState === 'loading')
+		document.addEventListener('DOMContentLoaded', addAurora);
+	else
+		addAurora();
 })();

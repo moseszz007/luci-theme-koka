@@ -665,12 +665,12 @@ function ensureStyles() {
 [data-page="admin-status-overview"] h2[name="content"]{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .koka-aurora{position:fixed;inset:0;z-index:-1;display:none;overflow:hidden;pointer-events:none}
 .koka-aurora::before{content:"";position:absolute;inset:0;background:linear-gradient(150deg,color-mix(in srgb,var(--koka-glow-b,#8ab4ff) 8%,transparent),transparent 45%,color-mix(in srgb,var(--koka-glow-c,#2dd4bf) 10%,transparent))}
-body[data-page="admin-status-koka"] .koka-aurora{display:block}
+.koka-glass .koka-aurora{display:block}
 body[data-page="admin-status-koka"] .fs-main{background:transparent;position:relative;z-index:0;isolation:isolate}
 body[data-page="admin-status-koka"] .fs-footer{background:transparent}
-.koka-aurora i{position:absolute;width:85vmax;height:85vmax;border-radius:50%;opacity:.26;will-change:transform;background:radial-gradient(circle at 50% 50%,var(--koka-glow-a,#34d399) 0%,transparent 68%)}
+.koka-aurora i{position:absolute;width:85vmax;height:85vmax;border-radius:50%;opacity:.26;will-change:transform;background:radial-gradient(circle at 50% 50%,var(--koka-glow-a,#7aa2ff) 0%,transparent 68%)}
 .koka-aurora i:nth-child(1){top:-22%;left:-12%;animation:koka-drift-a 32s ease-in-out infinite alternate}
-.koka-aurora i:nth-child(2){top:-18%;right:-16%;background:radial-gradient(circle at 50% 50%,var(--koka-glow-b,#8ab4ff) 0%,transparent 68%);animation:koka-drift-b 38s ease-in-out infinite alternate}
+.koka-aurora i:nth-child(2){top:-18%;right:-16%;background:radial-gradient(circle at 50% 50%,var(--koka-glow-b,#8b5cf6) 0%,transparent 68%);animation:koka-drift-b 38s ease-in-out infinite alternate}
 .koka-aurora i:nth-child(3){bottom:-22%;left:22%;background:radial-gradient(circle at 50% 50%,var(--koka-glow-c,#2dd4bf) 0%,transparent 68%);animation:koka-drift-c 44s ease-in-out infinite alternate}
 @keyframes koka-drift-a{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(6vw,7vh,0) scale(1.12)}}
 @keyframes koka-drift-b{from{transform:translate3d(0,0,0) scale(1.05)}to{transform:translate3d(-7vw,5vh,0) scale(.95)}}

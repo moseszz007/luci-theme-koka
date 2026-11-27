@@ -24,8 +24,8 @@ BODY = """Koka Modern for LuCI - тёмный скин поверх luci-theme-f
 - **Настройка дашборда**: скрыть/вернуть/переместить плашки, раскладка
   запоминается в браузере
 - **Стекло**: полупрозрачные панели, меню и модальные окна во всех разделах
-  LuCI; живой градиентный фон в единой сине-бирюзовой палитре. Отключается
-  в «Настроить»
+  LuCI; живой градиентный фон на каждой странице, единая сине-бирюзовая
+  палитра. Отключается в «Настроить»
 - **Раскладка**: сбалансированные пары плашек по высоте, перестановка
   и скрытие сохраняются в браузере
 - В Система -> Дизайн тема называется **Koka** (движок остаётся footstrap)
@@ -35,12 +35,12 @@ BODY = """Koka Modern for LuCI - тёмный скин поверх luci-theme-f
 
 ## Установка (opkg)
 
-    opkg install luci-theme-koka_2026.11.27-r9_all.ipk
+    opkg install luci-theme-koka_2026.11.27-r10_all.ipk
 
 ## Установка (apk)
 
     cp luci-theme-koka.rsa.pub /etc/apk/keys/
-    apk add --allow-untrusted luci-theme-koka-2026.11.27-r9.apk
+    apk add --allow-untrusted luci-theme-koka-2026.11.27-r10.apk
 
 После установки пакет сам применяет скин и дашборд. Удаление пакета
 возвращает стоковый вид.
@@ -51,9 +51,9 @@ BODY = """Koka Modern for LuCI - тёмный скин поверх luci-theme-f
 
 def main():
     payload = {
-        'tag_name': 'v2026.11.27-r9',
+        'tag_name': 'v2026.11.27-r10',
         'target_commitish': 'main',
-        'name': 'Koka Modern 2026.11.27-r9',
+        'name': 'Koka Modern 2026.11.27-r10',
         'body': BODY,
         'draft': False,
         'prerelease': False,
@@ -70,8 +70,8 @@ def main():
     rid = rel['id']
 
     for path in (
-        'dist/luci-theme-koka_2026.11.27-r9_all.ipk',
-        'dist/luci-theme-koka-2026.11.27-r9.apk',
+        'dist/luci-theme-koka_2026.11.27-r10_all.ipk',
+        'dist/luci-theme-koka-2026.11.27-r10.apk',
         'dist/luci-theme-koka.rsa.pub',
     ):
         data = Path(path).read_bytes()
