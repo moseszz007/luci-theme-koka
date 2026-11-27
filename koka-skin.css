@@ -87,19 +87,32 @@ html:not([data-palette])[data-darkmode="false"] body {
 	width: 85vmax; height: 85vmax;
 	border-radius: 50%;
 	opacity: .26;
-	will-change: transform;
 	background: radial-gradient(circle at 50% 50%, var(--koka-glow-a, #7aa2ff) 0%, transparent 68%);
 }
-.koka-aurora i:nth-child(1) { top: -22%; left: -12%; animation: koka-drift-a 32s ease-in-out infinite alternate; }
 .koka-aurora i:nth-child(2) {
 	top: -18%; right: -16%;
 	background: radial-gradient(circle at 50% 50%, var(--koka-glow-b, #8b5cf6) 0%, transparent 68%);
-	animation: koka-drift-b 38s ease-in-out infinite alternate;
 }
 .koka-aurora i:nth-child(3) {
 	bottom: -22%; left: 22%;
 	background: radial-gradient(circle at 50% 50%, var(--koka-glow-c, #2dd4bf) 0%, transparent 68%);
-	animation: koka-drift-c 44s ease-in-out infinite alternate;
+}
+
+/* The drifting glow is a constant repaint behind every blurred panel, so it
+ * only runs on large screens with a real pointer. Phones and touch devices
+ * get the same look, frozen — that is what keeps scrolling smooth. */
+@media (min-width: 1024px) and (pointer: fine) {
+	.koka-aurora i { will-change: transform; }
+	.koka-aurora i:nth-child(1) { top: -22%; left: -12%; animation: koka-drift-a 32s ease-in-out infinite alternate; }
+	.koka-aurora i:nth-child(2) { animation: koka-drift-b 38s ease-in-out infinite alternate; }
+	.koka-aurora i:nth-child(3) { animation: koka-drift-c 44s ease-in-out infinite alternate; }
+}
+@media (max-width: 1023px), (pointer: coarse) {
+	.koka-aurora i {
+		animation: none !important;
+		will-change: auto !important;
+	}
+	.koka-aurora i:nth-child(1) { top: -22%; left: -12%; }
 }
 @keyframes koka-drift-a { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(6vw, 7vh, 0) scale(1.12); } }
 @keyframes koka-drift-b { from { transform: translate3d(0, 0, 0) scale(1.05); } to { transform: translate3d(-7vw, 5vh, 0) scale(.95); } }
@@ -137,23 +150,23 @@ html:not([data-palette])[data-darkmode="false"] body {
 	backdrop-filter: blur(20px) saturate(1.2);
 }
 
+/* Popups: no backdrop-filter at all. A filter on an element that is being
+ * shown (display/new node + opacity transition) cannot be animated, so the
+ * blur snaps in a frame later and the popup "assembles in layers". A near
+ * opaque panel looks the same and appears in a single frame. */
 .koka-glass .modal {
-	background: color-mix(in srgb, var(--an) 72%, transparent) !important;
+	background: color-mix(in srgb, var(--an) 96%, transparent) !important;
 	border-color: rgba(255, 255, 255, .12) !important;
-	-webkit-backdrop-filter: blur(22px) saturate(1.2);
-	backdrop-filter: blur(22px) saturate(1.2);
+	box-shadow: 0 24px 60px rgba(2, 8, 23, .38) !important;
 }
 
 .koka-glass .fs-search-box {
-	background: color-mix(in srgb, var(--fs-panel) 92%, transparent) !important;
+	background: var(--fs-panel) !important;
 	border-color: var(--fs-border) !important;
-	-webkit-backdrop-filter: blur(20px) saturate(1.2);
-	backdrop-filter: blur(20px) saturate(1.2);
 }
 
-.koka-glass .modal-overlay {
-	-webkit-backdrop-filter: blur(4px);
-	backdrop-filter: blur(4px);
+.koka-glass #modal_overlay {
+	background: rgba(3, 7, 18, .58) !important;
 }
 
 .cbi-page-actions {
@@ -162,39 +175,23 @@ html:not([data-palette])[data-darkmode="false"] body {
 }
 
 .koka-glass .cbi-page-actions {
-	background: color-mix(in srgb, var(--an) 58%, transparent) !important;
-	-webkit-backdrop-filter: blur(14px);
-	backdrop-filter: blur(14px);
+	background: color-mix(in srgb, var(--an) 92%, transparent) !important;
 }
 
 .koka-glass .ifacebox,
 .koka-glass .alert-message {
-	background: color-mix(in srgb, var(--an) 60%, transparent) !important;
-	-webkit-backdrop-filter: blur(12px);
-	backdrop-filter: blur(12px);
+	background: color-mix(in srgb, var(--an) 94%, transparent) !important;
 }
 
 .koka-glass ul.dropdown,
 .koka-glass .cbi-dropdown > ul.dropdown {
-	background: color-mix(in srgb, color-mix(in srgb, var(--an) 94%, #fff 6%) 82%, transparent) !important;
-	-webkit-backdrop-filter: blur(20px) saturate(1.2);
-	backdrop-filter: blur(20px) saturate(1.2);
+	background: color-mix(in srgb, var(--an) 97%, transparent) !important;
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
 	.koka-glass #view .cbi-section,
-	.koka-glass .fs-sidebar,
-	.koka-glass .modal {
+	.koka-glass .fs-sidebar {
 		background: var(--an) !important;
-	}
-}
-
-@media (max-width: 767px) {
-	.koka-glass #view .cbi-section,
-	.koka-glass .fs-sidebar,
-	.koka-glass .modal {
-		-webkit-backdrop-filter: blur(10px) saturate(1.15);
-		backdrop-filter: blur(10px) saturate(1.15);
 	}
 }
 
@@ -457,36 +454,20 @@ button.cbi-button-reset::before {
 	z-index: 860 !important;
 }
 
+/* Flyouts are a single opaque-ish panel. They used to get their blur from a
+ * separate body-level "frost" layer that faded in 120ms after the menu was
+ * already visible — that read as three layers (menu, background, blur) and
+ * cost a full-page blur on phones. One panel, one frame, no extra layer. */
 .koka-glass .fs-sidebar ul.nav ul,
 .koka-glass #topmenu ul {
-	background: color-mix(in srgb, var(--an) 85%, transparent) !important;
+	background: color-mix(in srgb, var(--an) 97%, transparent) !important;
 	border-color: rgba(255, 255, 255, .14) !important;
 	box-shadow: 0 18px 46px rgba(2, 8, 23, .32) !important;
 	-webkit-backdrop-filter: none !important;
 	backdrop-filter: none !important;
 }
 
-@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-	.koka-glass .fs-sidebar ul.nav ul,
-	.koka-glass #topmenu ul {
-		background: color-mix(in srgb, var(--an) 62%, transparent) !important;
-	}
-}
-
-/* The popup sits inside the already-filtered bar, so its own backdrop-filter
- * has nothing to blur. This body-level layer blurs the page behind the flyout. */
-.koka-menu-frost {
-	position: fixed;
-	z-index: 855;
-	pointer-events: none;
-	opacity: 0;
-	border-radius: 16px;
-	background: transparent;
-	-webkit-backdrop-filter: blur(20px) saturate(1.2);
-	backdrop-filter: blur(20px) saturate(1.2);
-	transition: opacity .12s;
-}
-.koka-menu-frost.on { opacity: 1; }
+.koka-menu-frost { display: none !important; }
 
 /* The current page inside a menu: a glass frame, not just bold text. */
 #topmenu ul a.active,
@@ -765,4 +746,60 @@ textarea:invalid:focus {
 ::selection {
 	background: color-mix(in srgb, var(--fs-accent) 45%, transparent);
 	color: var(--fs-text);
+}
+
+/* ==== Popups enter as one piece ==== */
+@keyframes koka-pop-in {
+	from { opacity: 0; transform: translateY(-4px); }
+	to   { opacity: 1; transform: translateY(0); }
+}
+
+.koka-glass #topmenu ul,
+.koka-glass .fs-sidebar ul.nav ul,
+.koka-glass ul.dropdown,
+.koka-glass .cbi-dropdown[open] > ul.dropdown,
+.koka-glass .modal {
+	animation: koka-pop-in .12s ease-out both;
+}
+
+/* ==== Phones and touch screens: keep the look, drop the cost ====
+ * On mobile GPUs the expensive parts are backdrop-filter on every card, the
+ * animated aurora behind them and a fixed multi-layer page background; each
+ * scroll frame has to recompose all of it. Without them the same palette
+ * still reads as glass, and scrolling is smooth. */
+@media (max-width: 1023px), (pointer: coarse) {
+	html:not([data-palette]),
+	html:not([data-palette]) body {
+		background-attachment: scroll !important;
+	}
+
+	.koka-glass #view .cbi-section,
+	.koka-glass .fs-ap-card,
+	.koka-glass .fs-sidebar,
+	.koka-glass .modal,
+	.koka-glass #modal_overlay,
+	.koka-glass .fs-search-box,
+	.koka-glass .cbi-page-actions,
+	.koka-glass .ifacebox,
+	.koka-glass .alert-message,
+	.koka-glass ul.dropdown,
+	.koka-glass .cbi-dropdown > ul.dropdown {
+		-webkit-backdrop-filter: none !important;
+		backdrop-filter: none !important;
+	}
+
+	.koka-glass #view .cbi-section,
+	.koka-glass .fs-ap-card,
+	.koka-glass .fs-sidebar {
+		background: var(--an) !important;
+		box-shadow: 0 6px 18px rgba(2, 8, 23, .16) !important;
+	}
+
+	/* A filter on the bar would still re-blur on every scroll frame. */
+	.koka-glass .fs-bar,
+	.koka-glass header.fs-bar {
+		-webkit-backdrop-filter: none !important;
+		backdrop-filter: none !important;
+		background: var(--an) !important;
+	}
 }

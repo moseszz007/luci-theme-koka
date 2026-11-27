@@ -668,7 +668,7 @@ function ensureStyles() {
 .koka-glass .koka-aurora{display:block}
 body[data-page="admin-status-koka"] .fs-main{background:transparent;position:relative;z-index:0;isolation:isolate}
 body[data-page="admin-status-koka"] .fs-footer{background:transparent}
-.koka-aurora i{position:absolute;width:85vmax;height:85vmax;border-radius:50%;opacity:.26;will-change:transform;background:radial-gradient(circle at 50% 50%,var(--koka-glow-a,#7aa2ff) 0%,transparent 68%)}
+.koka-aurora i{position:absolute;width:85vmax;height:85vmax;border-radius:50%;opacity:.26;background:radial-gradient(circle at 50% 50%,var(--koka-glow-a,#7aa2ff) 0%,transparent 68%)}
 .koka-aurora i:nth-child(1){top:-22%;left:-12%;animation:koka-drift-a 32s ease-in-out infinite alternate}
 .koka-aurora i:nth-child(2){top:-18%;right:-16%;background:radial-gradient(circle at 50% 50%,var(--koka-glow-b,#8b5cf6) 0%,transparent 68%);animation:koka-drift-b 38s ease-in-out infinite alternate}
 .koka-aurora i:nth-child(3){bottom:-22%;left:22%;background:radial-gradient(circle at 50% 50%,var(--koka-glow-c,#2dd4bf) 0%,transparent 68%);animation:koka-drift-c 44s ease-in-out infinite alternate}
@@ -842,7 +842,7 @@ button.koka-action{font:inherit;cursor:pointer}
 @media (max-width:1100px){.koka-card.span7,.koka-card.span5{grid-column:span 6}.koka-hero-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.koka-gauges{grid-template-columns:repeat(2,minmax(0,1fr))}.koka-gauge:nth-child(3){border-inline-start:0;border-top:1px solid color-mix(in srgb,var(--S) 25%,transparent)}.koka-gauge:nth-child(4){border-top:1px solid color-mix(in srgb,var(--S) 25%,transparent)}}
 @media (max-width:760px){.koka-card,.koka-card.span7,.koka-card.span5{grid-column:span 12}.koka-hero{grid-template-columns:1fr;padding:16px}.koka-hero-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.koka-grid{gap:12px}.koka-card{border-radius:14px}.koka-actions{grid-template-columns:1fr}.koka-hero-name{font-size:1.3rem}.koka-hero-actions .koka-action{flex:1 1 auto;justify-content:center}.koka-sys-top .koka-ring{width:84px;height:84px}.koka-gauges{grid-template-columns:repeat(2,minmax(0,1fr))}.koka-res-mid{grid-template-columns:1fr}.koka-res-chart{height:96px}.koka-proc-row{grid-template-columns:minmax(0,1fr) 50px 72px}.koka-proc-comp,.koka-proc-head span:nth-child(2){display:none}}
 @media (prefers-reduced-motion:reduce){.koka-action,.koka-bar i{transition:none}.koka-aurora i{animation:none}}
-@media (max-width:760px){.koka-glass .koka-card,.koka-glass .koka-hero{-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}}
+@media (max-width:1023px),(pointer:coarse){.koka-aurora i{animation:none!important;will-change:auto!important}.koka-glass .koka-card,.koka-glass .koka-hero{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}.koka-glass .koka-card{background:color-mix(in srgb,var(--an) 92%,transparent)!important}.koka-glass .koka-hero{background:linear-gradient(130deg,color-mix(in srgb,var(--a) 22%,var(--an)),var(--an))!important}}
 	`));
 }
 
