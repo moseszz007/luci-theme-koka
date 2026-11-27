@@ -1,1 +1,1 @@
-'use strict';'require baseclass';const FS_VERSION = '0.14.16';return baseclass.extend({REPO_URL:'https://github.com/VizzleTF/luci-theme-koka',label:()=>/^\d+\.\d+/.test(FS_VERSION)&&!/-dev$/.test(FS_VERSION)?'Koka v'+FS_VERSION:'Koka (dev)'});
+'use strict';'require baseclass';const FS_VERSION = '__KOKA_VERSION__';return baseclass.extend({REPO_URL:'https://github.com/moseszz007/luci-theme-koka',label:()=>/^\d+\.\d+/.test(FS_VERSION)&&!/-dev$/.test(FS_VERSION)?'Koka v'+FS_VERSION:'Koka (dev)'});

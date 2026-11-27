@@ -76,7 +76,7 @@ exit 0
 '''
 
 
-def collect_files():
+def collect_files(version=''):
     files = []
 
     theme = ROOT / 'theme'
@@ -85,6 +85,8 @@ def collect_files():
             continue
         rel = path.relative_to(theme).as_posix()
         data = path.read_bytes().replace(b'\r\n', b'\n')
+        if version:
+            data = data.replace(b'__KOKA_VERSION__', version.encode())
         mode = 0o755 if (rel.startswith(('www/cgi-bin/', 'etc/uci-defaults/'))
                          or rel.endswith('.sh')) else 0o644
         files.append((rel, data, mode))
@@ -403,7 +405,7 @@ def verify_apk(data, version, public_key):
 
 def main():
     parser = argparse.ArgumentParser(description='Build luci-theme-koka ipk and apk packages')
-    parser.add_argument('--version', default='2026.11.27-r20', help='package version (default: 2026.11.27-r20)')
+    parser.add_argument('--version', default='2026.11.27-r21', help='package version (default: 2026.11.27-r21)')
     parser.add_argument('--outdir', default='dist', help='output directory (default: dist)')
     parser.add_argument('--keydir', default='keys', help='signing key directory (default: keys)')
     parser.add_argument('--epoch', type=int, default=int(os.environ.get('SOURCE_DATE_EPOCH', time.time())),
@@ -420,9 +422,18 @@ def main():
     keydir = (ROOT / args.keydir).resolve()
     outdir.mkdir(parents=True, exist_ok=True)
 
-    files = collect_files()
+    files = collect_files(args.version)
     if not files:
         raise SystemExit('no package files found')
+
+    built = {name for name, _, _ in files}
+    for required in ('www/luci-static/koka/cascade.css',
+                     'usr/share/ucode/luci/template/themes/koka/header.ut',
+                     'usr/share/luci/menu.d/luci-theme-koka.json',
+                     'etc/config/koka',
+                     'www/luci-static/resources/view/status/koka-dashboard.js'):
+        if required not in built:
+            raise SystemExit('package is missing ' + required)
 
     private_key = load_key(keydir, sign)
     public_key = private_key.public_key() if private_key else None
