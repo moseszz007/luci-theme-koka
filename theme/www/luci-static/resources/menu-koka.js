@@ -1,0 +1,1 @@
+"use strict";"require baseclass";"require menu-koka-common as common";return baseclass.extend({__init__(){common.init()}});

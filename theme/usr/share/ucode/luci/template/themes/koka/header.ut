@@ -1,0 +1,79 @@
+{%
+import { getuid, getspnam } from 'luci.core';
+const boardinfo = ubus.call('system', 'board') ?? {};
+const fs_defaults = uci.get_all('koka', 'settings') ?? {};
+http.prepare_content('text/html; charset=UTF-8');
+-%}
+
+{% include('themes/koka/partials/head', { boardinfo, fs_defaults }) %}
+
+{% const fs_page = entityencode(join('-', length(ctx.path) ? ctx.path : ctx.request_path), true) %}
+	<body class="lang_{{ dispatcher.lang }}" data-page="{{ fs_page }}">
+{% if (!blank_page): %}
+		<script>(()=>{const d=document.body,i=window.__fsBodyAdds||(window.__fsBodyAdds=[]);["appendChild","insertBefore","replaceChild","append","prepend","insertAdjacentElement","insertAdjacentHTML"].forEach(e=>{const t=d[e];Object.defineProperty(d,e,{configurable:!0,writable:!0,value(){var e=Array.prototype.slice.call(this.children),d=t.apply(this,arguments),n=this.children;for(let r=0;r<n.length;r++)-1===e.indexOf(n[r])&&i.push(n[r]);return d}})})})();</script>
+{% endif %}
+
+<div class="fs-pattern" data-fs-chrome aria-hidden="true"></div>
+{% if (!blank_page): %}
+
+<a class="fs-skip" data-fs-chrome href="#maincontent">{{ _('Skip to content') }}</a>
+<div class="fs-shell">
+<nav class="fs-sidebar" data-fs-chrome aria-label="{{ _('Menu') }}">
+<div class="fs-brandrow">
+<a class="fs-brand" href="{{ dispatcher.build_url() }}">
+<span class="fs-logo">
+<svg aria-hidden="true" viewBox="-9 -1 100 100"><path d="m40.5 50.8a6.6 6.6 0 1 0 0 13.2 6.6 6.6 0 0 0 0-13.2m-40.5-33.9 7 6.8a47.5 47.5 0 0 1 67.2 0l7-6.8a57.2 57.2 0 0 0-81.2 0" fill="#00b5e2"/><path d="m12.5 29.2 6.8 7a30 30 0 0 1 42.6 0l6.8-7a39.7 39.7 0 0 0-56.3 0" fill="#00b5e2"/><path d="m24.8 41.6 6.8 6.9a12.6 12.6 0 0 1 18 0l6.8-6.9a22.3 22.3 0 0 0-31.6 0" fill="#00b5e2"/><path class="fs-logo-ring" d="m64.9 39.7a30.2 30.2 0 1 1-48.7 0l-6.9-7a39.9 39.9 0 1 0 62.5 0z"/></svg>
+</span>
+<span class="fs-wordmark">{{ entityencode(striptags(boardinfo.hostname ?? 'OpenWrt'), true) }}</span>
+</a>
+<button type="button" class="fs-railtoggle" id="fs-rail-toggle" aria-label="{{ _('Collapse menu') }}" title="{{ _('Collapse menu') }}">
+<svg class="fs-ico" aria-hidden="true" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+</button>
+</div>
+<div id="indicators"></div>
+<div class="fs-navlabel">{{ _('Menu') }}</div>
+<ul class="nav" id="topmenu"></ul>
+<ul id="modemenu" class="fs-modemenu"></ul>
+<div class="fs-spacer"></div>
+<button type="button" class="fs-themerow" id="fs-search-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="fs-search-ov" title="{{ _('Search') }}" aria-label="{{ _('Search') }}">
+<svg class="fs-ico" aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>
+<span class="fs-label">{{ _('Search') }}</span>
+</button>
+{% if (dispatcher.lookup("admin/logout")): %}
+				<a class="fs-logout" href="{{ dispatcher.build_url('admin/logout') }}" title="{{ _('Log out') }}" aria-label="{{ _('Log out') }}">
+<svg class="fs-ico" aria-hidden="true" viewBox="0 0 24 24"><path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4"/><path d="M14 12h7m0 0-3-3m3 3-3 3"/></svg>
+<span class="fs-label">{{ _('Log out') }}</span>
+</a>
+{% endif %}
+			</nav>
+<main class="fs-main" id="maincontent" tabindex="-1">
+<h1 class="fs-title-main fs-sr" data-fs-chrome>{{ entityencode(striptags(dispatched?.title ? _(dispatched.title) : (boardinfo.hostname ?? 'OpenWrt')), true) }}</h1>
+<div id="fs-nav-status" class="fs-sr" data-fs-chrome role="status" aria-live="polite"></div>
+<div class="fs-content" data-page="{{ fs_page }}">
+{% const empty_password = (getuid() == 0 && getspnam('root')?.pwdp === '') %}
+					{% if (empty_password): %}
+						{% include('themes/koka/partials/notice', {
+title: _('No password set!'),
+text: _('There is no password set on this router. Please configure a root password to protect the web interface.'),
+path: "admin/system/admin",
+label: _('Go to password configuration...')
+}) %}
+					{% endif %}
+
+{% if (boardinfo.rootfs_type == "initramfs"): %}
+						{% include('themes/koka/partials/notice', {
+title: _('System running in recovery (initramfs) mode.'),
+text: _('No changes to settings will be stored and are lost after rebooting. This mode should only be used to install a firmware upgrade'),
+path: "admin/system/flash",
+label: _('Go to firmware upgrade...')
+}) %}
+					{% endif %}
+
+<noscript>
+{% include('themes/koka/partials/notice', {
+title: _('JavaScript required!'),
+text: _('You must enable JavaScript in your browser or LuCI will not work properly.')
+}) %}
+					</noscript>
+<div id="tabmenu" style="display:none"></div>
+{% endif %}

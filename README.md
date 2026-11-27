@@ -1,113 +1,110 @@
 # Koka Modern for LuCI
 
-Тёмная, аккуратная тема для LuCI на базе [luci-theme-footstrap](https://github.com/stangri/luci-theme-footstrap).
-Это не форк движка: Koka — CSS-скин, небольшой дашборд и единый набор иконок,
-которые ставятся поверх footstrap и легко откатываются.
+Тёмная, аккуратная и **самостоятельная** тема для LuCI: движок темы входит в сам
+пакет, `luci-theme-footstrap` больше не нужен.
 
-> **Название в системе.** В `Система → Дизайн` тема называется **Koka**.
-> Движок при этом остаётся `luci-theme-footstrap`, а путь —
-> `/luci-static/footstrap`. Это сделано намеренно: скин не форкает движок,
-> не ломает его обновления и откатывается одной командой.
+Внутри — тёмная палитра navy/indigo, дашборд в духе Keenetic OS, единый набор
+иконок, иконки интерфейсов по протоколу, стеклянные панели и живой фон.
 
 ![Дашборд Koka](docs/dashboard.jpg)
 
 ## Что внутри
 
-- **Тёмная палитра** navy/indigo, системные шрифты, карточки 16 px, градиентные кнопки.
-- **Дашборд** в духе Keenetic OS: роутер, WAN, клиенты, CPU/ОЗУ/температура, порты,
-  быстрые действия, живой график трафика. Отдельный пункт **Статус → Дашборд**;
-  штатный «Обзор» не трогается.
+- **Движок темы** — форк оформления footstrap, переименованный в Koka: свои
+  шаблоны `themes/koka`, свой CSS `/luci-static/koka/cascade.css`, свои настройки
+  в `/etc/config/koka`. Конфликтов с другими темами нет.
+- **Дашборд** в духе Keenetic OS: роутер, WAN, клиенты, CPU/ОЗУ/температура,
+  порты, быстрые действия, живой график трафика. Отдельный пункт
+  **Статус → Дашборд**; штатный «Обзор» не трогается.
 - **Карточка «Сервисы»** — состояние DNS Proxy, dnsmasq, Zapret, Steer,
-  ZeroTier, SSH и LuCI с PID/количеством процессов и быстрым переходом
-  на нужную страницу.
+  ZeroTier, SSH и LuCI с PID и быстрым переходом на нужную страницу.
 - **Карточка «Ресурсы»** — кольцевые индикаторы CPU/температуры/памяти/флеша,
-  5-минутный график, разбивка памяти по сервисам и список процессов с сортировкой
-  по памяти или CPU. Данные собираются из `/proc`, внешние сервисы не нужны.
-- **Стекло и живой фон**: полупрозрачные панели с размытием во всех разделах
-  LuCI — карточки, меню, выпадающие списки, модальные окна; фон с плавными
-  цветовыми пятнами работает на каждой странице, а не только на дашборде.
-  Эффект стекла можно выключить в настройках дашборда.
-- **Настройка дашборда** — кнопка **«Настроить»**: плашки можно скрывать,
-  возвращать и менять местами (перетаскиванием или стрелками). Раскладка
-  сохраняется в браузере.
+  5-минутный график, разбивка памяти по сервисам и список процессов.
+- **Стекло и живой фон** во всех разделах LuCI; эффект стекла отключается
+  в настройках дашборда.
+- **Настройка дашборда** кнопкой «Настроить»: плашки скрываются, возвращаются
+  и меняются местами, раскладка хранится в браузере.
 - **Единые иконки**: меню, кнопки действий, интерфейсы, порты, Wi-Fi-сигнал.
-  Линейный набор в стиле Lucide, без иконочных шрифтов.
 - **Иконки интерфейсов по протоколу**: AmneziaWG/WireGuard, bridge, PPPoE,
   ZeroTier/туннели больше не выглядят одинаковым серым разъёмом.
-- **Кэш-бастинг** иконок и JS, чтобы после обновления не оставались старые картинки.
+- **Кэш-бастинг** CSS, JS и иконок, чтобы обновление подхватывалось сразу.
 
 ## Требования
 
 - OpenWrt 24.10+ (проверено на 24.10.5, aarch64).
 - LuCI 25.x.
-- Установленный `luci-theme-footstrap` (скин ставится поверх него).
-
-## Установка
-
-Скопируй папку на роутер, например в `/root/koka-skin`:
-
-```sh
-scp -r luci-theme-koka root@192.168.1.1:/root/koka-skin
-ssh root@192.168.1.1
-sh /root/koka-skin/install-koka-skin.sh
-sh /root/koka-skin/install-koka-dashboard.sh
-```
-
-Затем перезагрузи страницу в браузере (`F5`).
-
-Скрипт сам делает резервные копии с суффиксом `.bak-koka` и обновляет
-токен версии LuCI, поэтому новый JS и иконки подтягиваются без ручной
-очистки кэша.
+- Больше ничего: footstrap не требуется.
 
 ## Установка из пакета
 
 В [Releases](https://github.com/moseszz007/luci-theme-koka/releases) лежат
 `luci-theme-koka_<версия>_all.ipk` (opkg) и `luci-theme-koka-<версия>.apk` (apk).
-Пакет зависит от `luci-theme-footstrap`, после установки сам применяет скин
-и дашборд, а при удалении возвращает сток.
+Пакет ставит тему, иконки и дашборд и сразу включает Koka в LuCI.
 
 ```sh
-opkg install luci-theme-koka_2026.11.27-r19_all.ipk
+opkg install luci-theme-koka_2026.11.27-r20_all.ipk
 # или для apk:
 cp luci-theme-koka.rsa.pub /etc/apk/keys/
-apk add --allow-untrusted luci-theme-koka-2026.11.27-r19.apk
+apk add --allow-untrusted luci-theme-koka-2026.11.27-r20.apk
 ```
+
+Или одной командой установщиком:
+[Start_setup_OpenWrt](https://github.com/moseszz007/Start_setup_OpenWrt) —
+пункт «Тема Koka».
+
+## Установка без пакета
+
+```sh
+scp -r luci-theme-koka root@192.168.1.1:/root/
+ssh root@192.168.1.1
+sh /root/luci-theme-koka/install-koka-theme.sh
+```
+
+Затем перезагрузи страницу в браузере (`F5`).
+
+Скрипт делает резервные копии иконок и `interfaces.js` с суффиксом `.bak-koka`,
+поэтому откат возвращает сток.
 
 ## Откат
 
 ```sh
-sh /root/koka-skin/rollback-koka-dashboard.sh
-sh /root/koka-skin/rollback-koka-skin.sh
+sh /usr/share/koka/rollback-koka-skin.sh          # вернуть стоковые иконки и тему
+sh /root/luci-theme-koka/uninstall-koka-theme.sh  # удалить файлы ручной установки
 ```
 
-Возвращает штатный `cascade.css`, `head.ut`, `interfaces.js`, иконки и пункт меню.
+Удаление пакета делает то же самое автоматически.
 
 ## Что именно меняется
 
 | Файл | Назначение |
 |---|---|
-| `/www/luci-static/footstrap/cascade.css` | скин дописывается в конец, сток — в `.bak-koka` |
-| `/usr/share/ucode/luci/template/themes/footstrap/partials/head.ut` | версия CSS и загрузчик `koka-icon-bust.js` |
-| `/www/luci-static/footstrap/koka-icon-bust.js` | версионирует URL иконок |
-| `/www/luci-static/resources/icons/*.svg` | новый набор иконок интерфейсов |
+| `/www/luci-static/koka/cascade.css` | движок темы + скин Koka |
+| `/www/luci-static/koka/koka-icon-bust.js` | версионирует URL иконок |
+| `/usr/share/ucode/luci/template/themes/koka/` | шаблоны темы (header/footer/sysauth/head) |
+| `/www/luci-static/resources/koka-fs-*.js` | JS темы (навигация, настройки, поиск) |
+| `/www/luci-static/resources/menu-koka*.js` | построение меню |
+| `/www/luci-static/resources/view/koka/appearance.js` | страница настроек Koka |
+| `/www/luci-static/resources/view/status/koka-dashboard.js` | страница «Статус → Дашборд» |
+| `/usr/share/luci/menu.d/luci-theme-koka.json` | пункт «Система → Koka» |
+| `/etc/config/koka` | настройки темы |
+| `/www/luci-static/resources/icons/*.svg` | набор иконок (со стоковыми `.bak-koka`) |
 | `/www/luci-static/resources/view/network/interfaces.js` | иконка по протоколу интерфейса |
-| `/www/luci-static/resources/view/status/koka_*.js` | страница дашборда |
-| `/usr/share/luci/menu.d/luci-app-koka-dashboard.json` | пункт «Дашборд» |
-
-## Производительность
-
-Эффект стекла (`backdrop-filter`) и анимированный фон считает **браузер**, а не
-роутер. На слабых телефонах размытие может быть заметным — в режиме
-**«Настроить»** есть переключатель **«Стекло: вкл/выкл»**. Сам фон построен на
-трёх радиальных градиентах с `transform`-анимацией, без тяжёлого blur-фильтра.
 
 ## Разработка
 
 ```sh
-py -3 make-koka-icons.py       # пересобрать icons/*.svg
-py -3 make-koka-interfaces.py  # пересобрать koka-interfaces.js из стокового LuCI
-py -3 packages/build-packages.py --version 2026.11.27-r19
+py -3 make-koka-icons.py        # пересобрать icons/*.svg
+py -3 make-koka-interfaces.py   # пересобрать koka-interfaces.js из стокового LuCI
+py -3 packages/build-packages.py --version 2026.11.27-r20
 ```
+
+Структура исходников темы:
+
+- `theme/` — файлы, которые ставятся на роутер как есть;
+- `engine/cascade.base.css` — CSS движка без скина;
+- `koka-skin.css` — сам скин, при сборке дописывается к движку;
+- `icons/` — набор иконок;
+- `packages/build-packages.py` — сборка `.ipk` и подписанного `.apk`.
 
 `koka-interfaces.js` — это стоковый `view/network/interfaces.js` с патчем
 `render_iface()`: иконка выбирается по `getProtocol()`. При обновлении LuCI
@@ -120,7 +117,8 @@ py -3 packages/build-packages.py --version 2026.11.27-r19
 
 ## Благодарности
 
-- [luci-theme-footstrap](https://github.com/stangri/luci-theme-footstrap) — движок темы.
+- [luci-theme-footstrap](https://github.com/VizzleTF/luci-theme-footstrap) — движок,
+  от которого Koka ведёт свою родословную (Apache-2.0).
 - [LuCI](https://github.com/openwrt/luci) — интерфейс OpenWrt.
 - Иконки вдохновлены [Lucide](https://lucide.dev/).
 

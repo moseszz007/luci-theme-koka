@@ -1,0 +1,1 @@
+"use strict";"require view";"require koka-fs-appearance as appearance";return view.extend({render:()=>appearance.renderStandalone().then(e=>E("div",{class:"cbi-section"},[e])),handleSave:null,handleSaveApply:null,handleReset:null});

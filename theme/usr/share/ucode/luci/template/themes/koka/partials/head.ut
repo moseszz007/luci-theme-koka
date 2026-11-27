@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+{%
+let _sd_lay  = index([ 'sidebar', 'top' ], fs_defaults.layout) >= 0 ? fs_defaults.layout : '';
+let _sd_dark = index([ 'auto', 'light', 'dark' ], fs_defaults.darkmode) >= 0 ? fs_defaults.darkmode : '';
+let _sd_pal  = index([ 'koka', 'hicontrast', 'bootstrap', '2020', 'forum' ], fs_defaults.palette) >= 0 ? fs_defaults.palette : '';
+let _sd_wall = index([ 'off', 'pattern', 'file' ], fs_defaults.wallpaper) >= 0 ? fs_defaults.wallpaper : '';
+let _sd_pink = index([ 'theme', 'original' ], fs_defaults.pattern_ink) >= 0 ? fs_defaults.pattern_ink : '';
+let _sd_ac   = index([ 'on', 'off' ], fs_defaults.autocollapse) >= 0 ? fs_defaults.autocollapse : '';
+let _sd_dens = index([ 'compact', 'normal', 'large' ], fs_defaults.density) >= 0 ? fs_defaults.density : '';
+function _sd_range(raw, min, max) {
+let n = int(raw);
+return (type(raw) == 'string' && n >= min && n <= max) ? n : -1;
+}
+function _sd_token(v) {
+return (type(v) == 'string' && match(v, /^[a-f0-9]{6,64}$/)) ? v : '';
+}
+let _sd_cwidth = _sd_range(fs_defaults.content_width, 1280, 3840);
+function _sd_hex(v) {
+return (type(v) == 'string' && match(lc(v), /^#[0-9a-f]{6}$/)) ? lc(v) : '';
+}
+function _sd_color(v) {
+let n = int(v);
+return _sd_hex(v) || ((n >= 1 && n <= 360) ? `${n}` : '');
+}
+let _sd_tint = _sd_color(fs_defaults.tint);
+let _sd_acc  = _sd_color(fs_defaults.accent);
+let _sd_good = _sd_color(fs_defaults.good);
+let _sd_warn = _sd_color(fs_defaults.warn);
+let _sd_dang = _sd_color(fs_defaults.danger);
+let _sd_card = _sd_hex(fs_defaults.card);
+let _sd_ctrl = _sd_hex(fs_defaults.control);
+let _sd_bar  = _sd_hex(fs_defaults.bar);
+let _sd_line = _sd_hex(fs_defaults.line);
+let _sd_round = _sd_range(fs_defaults.rounding, 0, 20);
+let _sd_lbg = _sd_token(fs_defaults.login_bg);
+let _sd_tstr = _sd_range(fs_defaults.tint_strength, 0, 200);
+let _sd_pdim = _sd_range(fs_defaults.photo_dim, 0, 100);
+let _sd_pat = _sd_token(fs_defaults.pattern);
+let _sd_psize = _sd_range(fs_defaults.pattern_size, 40, 1600);
+let _sd_pstr = _sd_range(fs_defaults.pattern_strength, 0, 100);
+function _sd_family(v) {
+if (!(type(v) == 'string' && length(v) >= 1 && length(v) <= 120 &&
+match(v, /^[A-Za-z0-9 ,._"'-]+$/)))
+return '';
+let q = '';
+for (let c in split(v, '')) {
+if (q == '')
+q = (c == '"' || c == "'") ? c : '';
+else if (c == q)
+q = '';
+}
+return (q == '') ? v : '';
+}
+let _sd_fsans = _sd_family(fs_defaults.font_sans);
+let _sd_fmono = _sd_family(fs_defaults.font_mono);
+let _sd_ftok = _sd_token(fs_defaults.fonts);
+let _lang = dispatcher.lang;
+let _lbase = lc(split(_lang, /[-_]/)[0]);
+let _rtl = index([ 'ar', 'arc', 'ckb', 'dv', 'fa', 'he', 'khw', 'ks', 'ps', 'sd', 'ug', 'ur', 'yi' ], _lbase) >= 0;
+%}
+
+<html lang="{{ dispatcher.lang }}" dir="{{ _rtl ? 'rtl' : 'ltr' }}" data-layout="{{ _sd_lay == 'sidebar' ? 'sidebar' : 'top' }}">
+<head>
+<meta charset="utf-8">
+<title>{{ entityencode(striptags(`${boardinfo.hostname ?? 'OpenWrt'}${dispatched?.title ? ` | ${_(dispatched.title)}` : ''}`), true) }}</title>
+<script>window.__fsSD={layout:"{{ _sd_lay }}",darkmode:"{{ _sd_dark }}",palette:"{{ _sd_pal }}",wallpaper:"{{ _sd_wall }}",tint:"{{ _sd_tint }}",accent:"{{ _sd_acc }}",good:"{{ _sd_good }}",warn:"{{ _sd_warn }}",danger:"{{ _sd_dang }}",card:"{{ _sd_card }}",control:"{{ _sd_ctrl }}",bar:"{{ _sd_bar }}",line:"{{ _sd_line }}",rounding:{{ _sd_round }},autocollapse:"{{ _sd_ac }}",login_bg:"{{ _sd_lbg }}",tint_strength:{{ _sd_tstr }},photo_dim:{{ _sd_pdim }},density:"{{ _sd_dens }}",pattern:"{{ _sd_pat }}",pattern_size:{{ _sd_psize }},pattern_strength:{{ _sd_pstr }},pattern_ink:"{{ _sd_pink }}",content_width:{{ _sd_cwidth }}};</script>
+<script>(()=>{const o=t=>{try{return localStorage.getItem(t)}catch(t){return null}},i=document.documentElement,r=window.__fsSD||{};"true"===o("fs-rail")&&i.setAttribute("data-rail","true");var t=o("fs-layout");"top"!==t&&"sidebar"!==t||i.setAttribute("data-layout",t);try{var e=o("fs-palette"),a=("hicontrast"===(e=null===e?r.palette||null:e)||"bootstrap"===e||"2020"===e||"forum"===e?i.setAttribute("data-palette",e):i.removeAttribute("data-palette"),r.pattern),s=(a&&i.style.setProperty("--aS",'url("/cgi-bin/luci-theme-koka-pattern?v='+a+'")'),o("fs-pattern-size")),n=null!==s?parseInt(s,10):r.pattern_size,l=(40<=n&&n<=1600&&440!==n&&i.style.setProperty("--aR",n+"px"),o("fs-pattern-strength")),d=null!==l?parseInt(l,10):r.pattern_strength,u=(0<=d&&d<=100&&20!==d&&i.style.setProperty("--bv",String(d/100)),o("fs-pattern-ink")),p=("original"===(u=null===u?r.pattern_ink||null:u)?i.setAttribute("data-pattern-ink","original"):i.removeAttribute("data-pattern-ink"),o("fs-wallpaper")),y=("pattern"===(p=null===p?r.wallpaper||null:p)||"file"===p?i.setAttribute("data-wallpaper",p):i.removeAttribute("data-wallpaper"),o("fs-density")),c=("compact"===(y=null===y?r.density||null:y)||"large"===y?i.setAttribute("data-density",y):i.removeAttribute("data-density"),o("fs-content-width")),f=parseInt(c,10),b=(1280<=(f=null===c?r.content_width:f)&&f<=3840&&1280!==f&&i.style.setProperty("--aN",f+"px"),o("fs-radius")),m=parseInt(b,10);0<=(m=null===b?r.rounding:m)&&m<=20&&12!==m&&i.style.setProperty("--aV",m+"px");const I=/^#[0-9a-f]{6}$/i;var g=(t,e,r,a,s,n)=>{var l=o(t),l=String((null===l?e:l)??"").trim();I.test(l)?(i.style.removeProperty(a),i.style.setProperty(s,l.toLowerCase()),n&&i.style.setProperty(n,(r=>{let[a,s,n]=[1,3,5].map(t=>{var e=parseInt(r.slice(t,t+2),16)/255;return e<=.04045?e/12.92:((.055+e)/1.055)**2.4}),t=(t,e,r)=>Math.cbrt(t*a+e*s+r*n);return.62<.21045*t(.41222,.53633,.05145)+.79362*t(.2119,.6807,.1074)-.00407*t(.0883,.28172,.62998)?"#000":"#fff"})(l)),i.setAttribute(r,"hex")):1<=(l=parseInt(l,10))&&l<=360&&(i.style.removeProperty(s),n&&i.style.removeProperty(n),i.style.setProperty(a,String(l)),i.setAttribute(r,"hue"))},h=(g("fs-tint",r.tint,"data-tint","--aI","--Y"),g("fs-accent",r.accent,"data-accent","--bp","--a","--z"),g("fs-good",r.good,"data-good","--bt","--t","--ah"),g("fs-warn",r.warn,"data-warn","--bA","--Q","--am"),g("fs-danger",r.danger,"data-danger","--br","--k","--U"),(t,e,r)=>{var a=o(t),a=String((null===a?e:a)??"").trim().toLowerCase();I.test(a)&&i.style.setProperty(r,a)}),k=(h("fs-card",r.card,"--an"),h("fs-control",r.control,"--V"),h("fs-bar",r.bar,"--aM"),h("fs-line",r.line,"--S"),r.login_bg&&i.style.setProperty("--bu",'url("/luci-static/koka/bg?v='+r.login_bg+'")'),o("fs-tint-strength")),v=parseInt(k,10),w=(0<=(v=null===k?r.tint_strength:v)&&v<=200&&100!==v&&i.style.setProperty("--bk",String(v/100)),o("fs-photo-dim")),A=parseInt(w,10);0<=(A=null===w?r.photo_dim:A)&&A<=100&&74!==A&&i.style.setProperty("--bw",A+"%")}catch(t){}t=o("fs-darkmode"),e=window.matchMedia("(prefers-color-scheme: dark)");function P(t){i.setAttribute("data-darkmode",t?"true":"false"),i.setAttribute("data-theme",t?"dark":"light"),i.setAttribute("data-bs-theme",t?"dark":"light")}a="true"===t||"false"!==t&&("auto"===t?"auto":"dark"===r.darkmode||"light"!==r.darkmode&&"auto");P(!0===a||"auto"===a&&e.matches),e.addEventListener("change",t=>{var e=o("fs-darkmode");"true"!==e&&"false"!==e&&(null!==e||"dark"!==r.darkmode&&"light"!==r.darkmode)&&P(t.matches)})})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="darkreader-lock">
+<meta name="theme-color" content="#f6f8fa">
+<link rel="stylesheet" data-fs-shell href="{{ media }}/cascade.css?v={{ pkgs_update_time }}">
+{% if (_sd_ftok != ''): %}
+
+<link rel="stylesheet" data-fs-shell href="{{ media }}/fonts/fonts.css?v={{ _sd_ftok }}">
+{% endif %}
+		{% if (_sd_fsans != '' || _sd_fmono != ''): %}
+
+<style data-fs-shell>:root { {% if (_sd_fsans != ''): %}--N: {{ _sd_fsans }};{% endif %}{% if (_sd_fmono != ''): %} --M: {{ _sd_fmono }};{% endif %} }</style>
+{% endif %}
+		<link rel="icon" href="{{ media }}/logo_48.png" sizes="48x48">
+<link rel="icon" href="{{ media }}/logo.svg" sizes="any">
+<link rel="manifest" href="{{ media }}/manifest.json?v={{ pkgs_update_time }}">
+<link rel="apple-touch-icon" href="{{ media }}/app-icon-192.png">
+{% if (dispatched?.css): %}
+
+<link rel="stylesheet" href="{{ resource }}/{{ dispatched.css }}?v={{ pkgs_update_time }}">
+{% endif %}
+		{% if (css): %}
+
+<style data-fs-shell>{{ css }}</style>
+{% endif %}
+
+{%- let has_catalog = true;
+try { has_catalog = length(require('fs').glob(`/usr/lib/lua/luci/i18n/*.${dispatcher.lang}.lmo`)) > 0; } catch (e) {} %}
+		{% if (has_catalog): %}
+		<script src="{{ dispatcher.build_url('admin/translations', dispatcher.lang) }}"></script>
+{% else %}
+		<script>window.TR={};</script>
+{% endif %}
+
+<script src="{{ resource }}/cbi.js?v={{ pkgs_update_time }}"></script>
+<script src="{{ media }}/koka-icon-bust.js?v={{ pkgs_update_time }}"></script></head>

@@ -1,0 +1,6 @@
+#!/bin/sh
+# Register the standalone Koka theme in LuCI.
+uci -q get luci.themes.Koka >/dev/null 2>&1 || \
+	uci set luci.themes.Koka='/luci-static/koka'
+uci commit luci
+exit 0

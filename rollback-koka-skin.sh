@@ -1,37 +1,30 @@
 #!/bin/sh
-# Remove the Koka Modern skin and return to the stock footstrap look.
+# Remove the Koka theme from LuCI and restore the stock look.
 set -e
 
-DIR="$(cd "$(dirname "$0")" && pwd)"
-CSS=/www/luci-static/footstrap/cascade.css
-HEAD=/usr/share/ucode/luci/template/themes/footstrap/partials/head.ut
 IFACE_JS=/www/luci-static/resources/view/network/interfaces.js
-
-[ -f "$CSS.bak-koka" ] && cp "$CSS.bak-koka" "$CSS"
-[ -f "$HEAD.bak-koka" ] && cp "$HEAD.bak-koka" "$HEAD"
-[ -f "$IFACE_JS.bak-koka" ] && cp "$IFACE_JS.bak-koka" "$IFACE_JS"
+if [ -f "$IFACE_JS.bak-koka" ]; then
+	cp "$IFACE_JS.bak-koka" "$IFACE_JS"
+	rm -f "$IFACE_JS.bak-koka"
+fi
 
 # Restore the stock interface icons.
 for icon in /www/luci-static/resources/icons/*.bak-koka; do
 	[ -e "$icon" ] || continue
 	cp "$icon" "${icon%.bak-koka}"
+	rm -f "$icon"
 done
-# Remove icons the skin added that LuCI did not ship.
+# Remove an icon the theme added that stock LuCI did not ship.
 [ -f /www/luci-static/resources/icons/amneziawg_disabled.svg.bak-koka ] || \
 	rm -f /www/luci-static/resources/icons/amneziawg_disabled.svg
 
-uci set footstrap.settings.wallpaper='file'
-uci set footstrap.settings.rounding='12'
-uci set footstrap.settings.content_width='1280'
-uci set footstrap.settings.density='normal'
-uci commit footstrap
-
-# Put the original design label back.
-uci set luci.themes.Footstrap='/luci-static/footstrap'
-uci -q delete luci.themes.Koka 2>/dev/null || true
+if [ "$(uci -q get luci.main.mediaurlbase)" = "/luci-static/koka" ]; then
+	uci set luci.main.mediaurlbase='/luci-static/bootstrap'
+fi
+uci -q delete luci.themes.Koka
 uci commit luci
 
 rm -f /tmp/luci-indexcache.*
 rm -rf /tmp/luci-modulecache
 
-echo 'Koka skin removed. Hard-refresh the browser (Ctrl+F5).'
+echo 'Koka theme removed. Stock LuCI restored.'

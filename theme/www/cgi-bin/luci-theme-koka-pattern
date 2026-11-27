@@ -1,0 +1,20 @@
+#!/bin/sh
+
+FILE=/etc/koka/pattern.svg
+
+if [ ! -r "$FILE" ]; then
+	printf 'Status: 404 Not Found\r\n'
+	printf 'Content-Type: text/plain\r\n'
+	printf '\r\n'
+	exit 0
+fi
+
+printf 'Status: 200 OK\r\n'
+printf 'Content-Type: image/svg+xml\r\n'
+printf 'Cache-Control: public, max-age=31536000, immutable\r\n'
+printf 'X-Content-Type-Options: nosniff\r\n'
+printf "Content-Security-Policy: default-src 'none'; sandbox\r\n"
+printf '\r\n'
+cat "$FILE"
+
+exit 0

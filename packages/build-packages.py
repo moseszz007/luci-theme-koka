@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 #
-# Build OpenWrt packages for luci-app-dnsproxy.
+# Build OpenWrt packages for the standalone Koka theme.
 #
 # Produces:
-#   dist/luci-app-dnsproxy_<version>_all.ipk   (opkg / OpenWrt <= 24.10)
-#   dist/luci-app-dnsproxy-<version>.apk       (apk / OpenWrt >= 25.12)
-#   dist/luci-app-dnsproxy.rsa.pub             (key for the signed apk)
+#   dist/luci-theme-koka_<version>_all.ipk   (opkg / OpenWrt <= 24.10)
+#   dist/luci-theme-koka-<version>.apk       (apk / OpenWrt >= 25.12)
+#   dist/luci-theme-koka.rsa.pub             (key for the signed apk)
 #
 # The apk is a v2 package (tar.gz with .PKGINFO). apk-tools 3.x still
 # supports v2 packages for installation.
@@ -30,7 +30,7 @@ TITLE = 'Koka Modern theme for LuCI'
 URL = 'https://github.com/moseszz007/luci-theme-koka'
 MAINTAINER = 'moseszz007'
 LICENSE = 'Apache-2.0'
-DESCRIPTION = 'Koka Modern: a dark LuCI skin for luci-theme-footstrap with a dashboard, unified icons and protocol-aware interface icons.'
+DESCRIPTION = 'Koka Modern: a standalone dark LuCI theme with a dashboard, unified icons and protocol-aware interface icons.'
 
 try:
     from cryptography.hazmat.primitives import hashes, serialization
@@ -46,7 +46,6 @@ POSTINST = b'''#!/bin/sh
 default_postinst $0 $@
 [ -n "${IPKG_INSTROOT}" ] && exit 0
 /usr/share/koka/install-koka-skin.sh
-/usr/share/koka/install-koka-dashboard.sh
 exit 0
 '''
 
@@ -61,7 +60,6 @@ PRERM = b'''#!/bin/sh
 [ -s ${IPKG_INSTROOT}/lib/functions.sh ] || exit 0
 . ${IPKG_INSTROOT}/lib/functions.sh
 if [ "$1" = "remove" ]; then
-	/usr/share/koka/rollback-koka-dashboard.sh || true
 	/usr/share/koka/rollback-koka-skin.sh || true
 fi
 default_prerm $0 $@
@@ -69,12 +67,10 @@ default_prerm $0 $@
 
 APK_POSTINST = b'''#!/bin/sh
 /usr/share/koka/install-koka-skin.sh
-/usr/share/koka/install-koka-dashboard.sh
 exit 0
 '''
 
 APK_PRERM = b'''#!/bin/sh
-/usr/share/koka/rollback-koka-dashboard.sh || true
 /usr/share/koka/rollback-koka-skin.sh || true
 exit 0
 '''
@@ -83,15 +79,25 @@ exit 0
 def collect_files():
     files = []
 
+    theme = ROOT / 'theme'
+    for path in sorted(theme.rglob('*')):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(theme).as_posix()
+        data = path.read_bytes().replace(b'\r\n', b'\n')
+        mode = 0o755 if (rel.startswith(('www/cgi-bin/', 'etc/uci-defaults/'))
+                         or rel.endswith('.sh')) else 0o644
+        files.append((rel, data, mode))
+
+    # The stylesheet is assembled from the unskinned engine and the Koka skin.
+    base = (ROOT / 'engine' / 'cascade.base.css').read_bytes()
+    skin = (ROOT / 'koka-skin.css').read_bytes()
+    files.append(('www/luci-static/koka/cascade.css', base + b'\n' + skin, 0o644))
+
     own = (
-        'koka-skin.css',
-        'koka-dashboard.js',
-        'koka-icon-bust.js',
         'koka-interfaces.js',
         'install-koka-skin.sh',
-        'install-koka-dashboard.sh',
         'rollback-koka-skin.sh',
-        'rollback-koka-dashboard.sh',
     )
 
     for name in own:
@@ -214,7 +220,7 @@ def ipk_control(version, epoch, size_kb):
     return (
         'Package: %s\n'
         'Version: %s\n'
-        'Depends: libc, luci-base, luci-theme-footstrap\n'
+        'Depends: libc, luci-base\n'
         'Source: package/%s\n'
         'SourceName: %s\n'
         'License: %s\n'
@@ -242,7 +248,6 @@ def apk_pkginfo(version, epoch, size, datahash):
         'origin = %s\n'
         'license = %s\n'
         'depend = luci-base\n'
-        'depend = luci-theme-footstrap\n'
         'datahash = %s\n'
     ) % (PACKAGE, PACKAGE, version, TITLE, URL, epoch, MAINTAINER, size, PACKAGE, LICENSE, datahash)
 
@@ -398,7 +403,7 @@ def verify_apk(data, version, public_key):
 
 def main():
     parser = argparse.ArgumentParser(description='Build luci-theme-koka ipk and apk packages')
-    parser.add_argument('--version', default='2026.11.27-r19', help='package version (default: 2026.11.27-r19)')
+    parser.add_argument('--version', default='2026.11.27-r20', help='package version (default: 2026.11.27-r20)')
     parser.add_argument('--outdir', default='dist', help='output directory (default: dist)')
     parser.add_argument('--keydir', default='keys', help='signing key directory (default: keys)')
     parser.add_argument('--epoch', type=int, default=int(os.environ.get('SOURCE_DATE_EPOCH', time.time())),

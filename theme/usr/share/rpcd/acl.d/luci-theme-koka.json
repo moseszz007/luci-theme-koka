@@ -1,0 +1,37 @@
+{
+	"luci-theme-koka": {
+		"description": "Koka theme settings saved to the router, the login background and pattern uploads, and the Koka settings page",
+		"read": {
+			"uci": [
+				"koka"
+			]
+		},
+		"write": {
+			"ubus": {
+				"uci": [
+					"set",
+					"commit"
+				],
+				"file": [
+					"remove"
+				]
+			},
+			"uci": [
+				"koka"
+			],
+			"cgi-io": [
+				"upload"
+			],
+			"file": {
+				"/etc/koka/login-bg": [
+					"write",
+					"remove"
+				],
+				"/etc/koka/pattern.svg": [
+					"write",
+					"remove"
+				]
+			}
+		}
+	}
+}

@@ -1,0 +1,13 @@
+{
+	"admin/system/koka": {
+		"title": "Koka",
+		"order": 3,
+		"action": {
+			"type": "view",
+			"path": "koka/appearance"
+		},
+		"depends": {
+			"acl": [ "luci-theme-koka" ]
+		}
+	}
+}

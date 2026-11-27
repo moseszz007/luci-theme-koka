@@ -1,0 +1,7 @@
+<div class="alert-message warning">
+<h2>{{ title }}</h2>
+<p>{{ text }}</p>
+{% if (path && dispatcher.lookup(path)): %}
+	  <div class="right"><a class="btn" href="{{ dispatcher.build_url(path) }}">{{ label }}</a></div>
+{% endif %}
+</div>
