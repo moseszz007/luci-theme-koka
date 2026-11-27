@@ -11,14 +11,15 @@ const callInfo = rpc.declare({ object: 'system', method: 'info' });
 const callHostHints = rpc.declare({ object: 'luci-rpc', method: 'getHostHints', expect: { '': {} } });
 const callLeases = rpc.declare({ object: 'luci-rpc', method: 'getDHCPLeases', expect: { '': {} } });
 const callInet = rpc.declare({ object: 'luci.internet-detector', method: 'InetStatus', expect: { '': {} } });
-const callZmMonitor = rpc.declare({ object: 'zapret-manager', method: 'monitor', expect: {} });
-const callZmProcs = rpc.declare({ object: 'zapret-manager', method: 'monitor_procs', expect: {} });
+
+const PROC_SCRIPT = 'awk \'FNR==1{pid=FILENAME;sub("/proc/","",pid);sub("/stat","",pid);line=$0;p=index(line,"(");q=index(line,")");comm=substr(line,p+1,q-p-1);rest=substr(line,q+2);n=split(rest,a," ");printf "%s\\t%s\\t%s\\t%s\\t%s\\n",pid,a[2],comm,a[12]+a[13],a[22]*4}\' /proc/[0-9]*/stat';
 
 const state = {
 	cpu: null,
+	cpuTotal: 0,
 	net: { wan: null, lan: null },
 	samples: { wan: { rx: [], tx: [] }, lan: { rx: [], tx: [] } },
-	zm: { prevTotal: 0, prevTicks: {}, history: { cpu: [], ram: [], temp: [] } }
+	zm: { prevTicks: {}, history: { cpu: [], ram: [], temp: [] } }
 };
 
 function noBatch() {
@@ -113,6 +114,22 @@ function cpuUsage(text) {
 	return usage;
 }
 
+function cpuTotals(text) {
+	const lines = (text || '').split('\n');
+	const parts = lines[0].trim().split(/\s+/).slice(1).map(Number);
+	let cores = 0;
+
+	lines.forEach(function(line) {
+		if (/^cpu\d+\s/.test(line))
+			cores++;
+	});
+
+	return {
+		total: parts.length ? parts.reduce(function(a, b) { return a + (b || 0); }, 0) : 0,
+		cores: cores || 1
+	};
+}
+
 function netRate(dev, key) {
 	if (!dev)
 		return null;
@@ -177,18 +194,12 @@ const ZM_BY_ID = {};
 
 ZM_COMPS.forEach(function(c) { ZM_BY_ID[c.id] = c; });
 
-function zmCompOf(proc) {
-	const name = proc[2] || '';
-	const cmd = proc[8] || '';
-	const ppid = proc[1];
-
-	if (ppid === 2 || !cmd && /^(kworker|ksoftirqd|kthreadd|migration|rcu_|irq\/|watchdog|cpuhp)/.test(name))
+function zmCompOf(name, ppid) {
+	if (ppid === 2 || /^(kworker|ksoftirqd|kthreadd|migration|rcu_|irq\/|watchdog|cpuhp)/.test(name))
 		return ZM_BY_ID.kernel;
 
-	const text = cmd + ' ' + name;
-
 	for (let i = 0; i < ZM_COMPS.length; i++) {
-		if (ZM_COMPS[i].rx && ZM_COMPS[i].rx.test(text))
+		if (ZM_COMPS[i].rx && ZM_COMPS[i].rx.test(name))
 			return ZM_COMPS[i];
 	}
 
@@ -202,89 +213,80 @@ function pushHistory(list, value) {
 		list.shift();
 }
 
-function resourceStats(zm, procs, cpu, ramPct, temp, info) {
+function resourceStats(procText, cpuDelta, cpu, ramPct, temp, info, ncpu, fmax) {
 	const hist = state.zm.history;
 
 	pushHistory(hist.cpu, cpu);
 	pushHistory(hist.ram, ramPct);
 	pushHistory(hist.temp, temp);
 
-	const mem = (zm && zm.mem) || {};
-	const memTotal = mem.total || ((info.memory && info.memory.total) ? info.memory.total / 1024 : 0);
-	const memUsed = mem.total ? Math.max(0, mem.total - (mem.avail != null ? mem.avail : mem.free || 0))
-		: ((info.memory && info.memory.total) ? info.memory.total - info.memory.available : 0) / 1024;
+	const mem = info.memory || {};
+	const memTotal = mem.total || 0;
+	const memUsed = mem.total ? Math.max(0, mem.total - (mem.available != null ? mem.available : mem.free || 0)) : 0;
 
-	let flashTotal = 0, flashUsed = 0;
-
-	if (zm && Array.isArray(zm.flash)) {
-		flashTotal = (zm.flash[0] || 0) * 1024;
-		flashUsed = (zm.flash[1] || 0) * 1024;
-	}
-	else if (info.root) {
-		flashTotal = info.root.total || 0;
-		flashUsed = info.root.used || 0;
-	}
+	const root = info.root || {};
+	const flashTotal = (root.total || 0) * 1024;
+	const flashUsed = (root.used || 0) * 1024;
 
 	const components = {};
 	const ticks = {};
 	const procRows = [];
 	const procByPid = {};
 
-	if (procs && Array.isArray(procs.p)) {
-		procs.p.forEach(function(p) {
-			const comp = zmCompOf(p);
-			const pid = p[0];
-			const cmd = p[8] || '';
-			const name = cmd.charAt(0) === '[' ? cmd : ((cmd.split(' ')[0] || '').split('/').pop() || p[2] || '?');
+	(procText || '').split('\n').forEach(function(line) {
+		if (!line)
+			return;
 
-			ticks[pid] = p[4] || 0;
+		const f = line.split('\t');
 
-			if (!components[comp.id])
-				components[comp.id] = { id: comp.id, name: comp.name, color: comp.color, cpu: 0, mem: 0, pids: 0 };
+		if (f.length < 5)
+			return;
 
-			components[comp.id].mem += (p[5] || 0) * 1024;
-			components[comp.id].pids++;
+		const pid = f[0];
+		const ppid = parseInt(f[1]) || 0;
+		const name = f[2] || '?';
+		const tk = parseInt(f[3]) || 0;
+		const rss = parseInt(f[4]) || 0;
+		const comp = zmCompOf(name, ppid);
 
-			const item = {
-				pid: pid,
-				name: name,
-				cmd: cmd,
-				comp: comp,
-				mem: (p[5] || 0) * 1024,
-				cpu: 0
-			};
+		ticks[pid] = tk;
 
-			procRows.push(item);
-			procByPid[pid] = item;
-		});
-	}
+		if (!components[comp.id])
+			components[comp.id] = { id: comp.id, name: comp.name, color: comp.color, cpu: 0, mem: 0, pids: 0 };
 
-	const total = procs && procs.total || 0;
-	const prevTotal = state.zm.prevTotal;
+		components[comp.id].mem += rss * 1024;
+		components[comp.id].pids++;
 
-	if (total > prevTotal && prevTotal > 0) {
-		const delta = total - prevTotal;
+		const item = {
+			pid: pid,
+			name: name,
+			comp: comp,
+			mem: rss * 1024,
+			cpu: 0
+		};
 
+		procRows.push(item);
+		procByPid[pid] = item;
+	});
+
+	if (cpuDelta > 0) {
 		Object.keys(components).forEach(function(id) {
 			components[id].cpu = 0;
 		});
 
-		procs.p.forEach(function(p) {
-			const comp = zmCompOf(p);
-			const prev = state.zm.prevTicks[p[0]];
+		Object.keys(ticks).forEach(function(pid) {
+			const prev = state.zm.prevTicks[pid];
+			const item = procByPid[pid];
 
-			if (prev != null && p[4] > prev) {
-				const value = (p[4] - prev) / delta * 100;
+			if (prev != null && ticks[pid] > prev && item) {
+				const value = (ticks[pid] - prev) / cpuDelta * 100;
 
-				components[comp.id].cpu += value;
-
-				if (procByPid[p[0]])
-					procByPid[p[0]].cpu = value;
+				item.cpu = value;
+				components[item.comp.id].cpu += value;
 			}
 		});
 	}
 
-	state.zm.prevTotal = total;
 	state.zm.prevTicks = ticks;
 
 	const list = Object.keys(components).map(function(id) { return components[id]; })
@@ -310,7 +312,7 @@ function resourceStats(zm, procs, cpu, ramPct, temp, info) {
 	});
 
 	return {
-		available: !!zm,
+		available: procRows.length > 0,
 		memTotal: memTotal,
 		memUsed: memUsed,
 		procMem: procMem,
@@ -319,10 +321,8 @@ function resourceStats(zm, procs, cpu, ramPct, temp, info) {
 		temp: temp,
 		cpu: cpu,
 		ramPct: ramPct,
-		ncpu: zm && zm.ncpu || 0,
-		fmax: zm && zm.fmax || 0,
-		cpuModel: zm && zm.cpu_model || '',
-		soc: zm && zm.soc || '',
+		ncpu: ncpu || 0,
+		fmax: fmax || 0,
 		components: top,
 		other: other.mem > 0 || other.cpu > 0 ? other : null,
 		stack: stack,
@@ -360,8 +360,8 @@ function fetchAll() {
 		readFile('/proc/sys/net/netfilter/nf_conntrack_count'),
 		readFile('/proc/sys/net/netfilter/nf_conntrack_max'),
 		readFile('/sys/class/thermal/thermal_zone0/temp'),
-		L.resolveDefault(withTimeout(callZmMonitor(), 4000, null), null),
-		L.resolveDefault(withTimeout(callZmProcs(), 4000, null), null)
+		L.resolveDefault(withTimeout(fs.exec_direct('/bin/sh', [ '-c', PROC_SCRIPT ]), 4000, ''), ''),
+		readFile('/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq')
 	]);
 	}).then(function(res) {
 		const board = res[0] || {};
@@ -378,8 +378,9 @@ function fetchAll() {
 		const ctMax = parseInt(res[11]) || 0;
 		const tempRaw = parseInt(res[12]);
 		const temp = isNaN(tempRaw) ? null : tempRaw / 1000;
-		const zm = res[13] || null;
-		const zmProcs = res[14] || null;
+		const procText = res[13] || '';
+		const fmaxRaw = parseInt(res[14]);
+		const fmax = isNaN(fmaxRaw) ? 0 : Math.round(fmaxRaw / 1000);
 
 		const wan = wans.find(function(n) { return n.getName() === 'wan'; }) || wans[0] || null;
 		const lan = nets.find(function(n) { return n.getName() === 'lan'; }) || null;
@@ -439,7 +440,12 @@ function fetchAll() {
 
 		const memInfo = info.memory || {};
 		const memPctValue = memInfo.total ? pct(memInfo.total - memInfo.available, memInfo.total) : 0;
-		const resources = resourceStats(zm, zmProcs, cpu, memPctValue, temp, info);
+		const cpuNow = cpuTotals(cpuText);
+		const cpuDelta = state.cpuTotal > 0 ? Math.max(0, cpuNow.total - state.cpuTotal) : 0;
+
+		state.cpuTotal = cpuNow.total;
+
+		const resources = resourceStats(procText, cpuDelta, cpu, memPctValue, temp, info, cpuNow.cores, fmax);
 
 		const mainDetector = detector.find(function(i) { return i.instance === 'internet'; }) || detector[0] || null;
 
@@ -622,6 +628,7 @@ function ensureStyles() {
 --kd-dhcp:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 6h13M8 12h13M8 18h13'/%3E%3Cpath d='M3 6h.01M3 12h.01M3 18h.01'/%3E%3C/svg%3E");
 --kd-reboot:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18.36 6.64a9 9 0 1 1-12.73 0'/%3E%3Cpath d='M12 2v10'/%3E%3C/svg%3E");
 --kd-pulse:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12h-4l-3 9L9 3l-3 9H2'/%3E%3C/svg%3E");
+--kd-sliders:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3'/%3E%3Cpath d='M14 2v4M8 10v4M16 18v4'/%3E%3C/svg%3E");
 }
 [data-page="admin-status-overview"] h2[name="content"]{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 #view .koka-dash{display:flex;flex-direction:column;gap:16px;color:var(--d)}
@@ -645,7 +652,23 @@ function ensureStyles() {
 .koka-card.span7{grid-column:span 7}
 .koka-card.span5{grid-column:span 5}
 .koka-card.span12{grid-column:span 12}
+button.koka-action{font:inherit;cursor:pointer}
+.koka-edit-btn.active{background:color-mix(in srgb,var(--a) 18%,var(--V));border-color:color-mix(in srgb,var(--a) 45%,transparent)}
+.koka-editing .koka-card{outline:1px dashed color-mix(in srgb,var(--a) 45%,transparent);outline-offset:2px}
+.koka-card.koka-dragging{opacity:.5}
+.koka-grip{cursor:grab;color:var(--c);font-size:.8rem;line-height:1;letter-spacing:-2px;flex:0 0 auto;user-select:none}
+.koka-hide,.koka-move{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border-radius:7px;border:1px solid color-mix(in srgb,var(--S) 60%,transparent);background:color-mix(in srgb,var(--V) 60%,transparent);color:var(--c);font:inherit;font-size:.8rem;line-height:1;cursor:pointer;flex:0 0 auto}
+.koka-hide:hover{border-color:#fb7185;color:#fb7185}
+.koka-move:hover{border-color:var(--a);color:var(--d)}
+.koka-tray{display:none}
+.koka-editing .koka-tray{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 14px;border:1px dashed color-mix(in srgb,var(--a) 35%,transparent);border-radius:14px;background:color-mix(in srgb,var(--V) 40%,transparent)}
+.koka-tray-label{font-size:.72rem;color:var(--c);font-weight:600}
+.koka-tray-chip,.koka-tray-reset{font:inherit;font-size:.72rem;padding:5px 10px;border-radius:8px;border:1px solid color-mix(in srgb,var(--S) 60%,transparent);background:color-mix(in srgb,var(--V) 60%,transparent);color:var(--d);cursor:pointer}
+.koka-tray-chip span{color:var(--a);font-weight:700}
+.koka-tray-reset{margin-inline-start:auto;color:var(--c)}
+.koka-tray-chip:hover,.koka-tray-reset:hover{border-color:var(--a)}
 .koka-card-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid color-mix(in srgb,var(--S) 45%,transparent)}
+#view .koka-card-head{position:static;z-index:auto}
 .koka-card-ico{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--a) 13%,var(--V));color:var(--a);flex:0 0 auto}
 .koka-card-ico .koka-ico,.koka-card-ico.koka-ico{width:19px;height:19px}
 .koka-card-title{font-weight:700;font-size:.95rem;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -697,8 +720,6 @@ function ensureStyles() {
 .koka-action:hover{background:color-mix(in srgb,var(--a) 10%,var(--V));border-color:color-mix(in srgb,var(--a) 35%,transparent);transform:translateY(-1px)}
 .koka-action .koka-ico{width:17px;height:17px;color:var(--a);flex:0 0 auto}
 .koka-action span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.koka-card-link{margin-inline-start:auto;flex:0 0 auto;font-size:.7rem;font-weight:700;color:var(--a);text-decoration:none;padding:4px 9px;border-radius:8px;border:1px solid color-mix(in srgb,var(--a) 30%,transparent);background:color-mix(in srgb,var(--a) 8%,transparent);transition:background .15s}
-.koka-card-link:hover{background:color-mix(in srgb,var(--a) 18%,transparent)}
 .koka-res{display:flex;flex-direction:column;gap:14px}
 .koka-gauges{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .koka-gauge{display:flex;align-items:center;gap:11px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--S) 45%,transparent);border-radius:12px;background:color-mix(in srgb,var(--V) 45%,transparent);min-width:0}
@@ -736,8 +757,6 @@ function ensureStyles() {
 .koka-proc-sort{display:inline-flex;gap:4px;margin-inline-start:auto;margin-inline-end:8px}
 .koka-sort-btn{font:inherit;font-size:.64rem;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid color-mix(in srgb,var(--S) 50%,transparent);background:transparent;color:var(--c);cursor:pointer}
 .koka-sort-btn.active{background:color-mix(in srgb,var(--a) 16%,transparent);border-color:color-mix(in srgb,var(--a) 45%,transparent);color:var(--d)}
-.koka-proc-all{font-size:.66rem;font-weight:600;color:var(--a);text-decoration:none;white-space:nowrap;margin-inline-start:8px}
-.koka-proc-all:hover{text-decoration:underline}
 .koka-proc-row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 54px 78px;gap:8px;align-items:center;padding:5px 0;border-top:1px solid color-mix(in srgb,var(--S) 30%,transparent);font-size:.74rem;min-width:0}
 .koka-proc-head{border-top:0;padding:0 0 2px;font-size:.58rem;letter-spacing:.07em;text-transform:uppercase;color:var(--c)}
 .koka-proc-row .r{text-align:right}
@@ -765,6 +784,7 @@ function ensureStyles() {
 .koka-ico-dhcp{-webkit-mask-image:var(--kd-dhcp);mask-image:var(--kd-dhcp)}
 .koka-ico-reboot{-webkit-mask-image:var(--kd-reboot);mask-image:var(--kd-reboot)}
 .koka-ico-pulse{-webkit-mask-image:var(--kd-pulse);mask-image:var(--kd-pulse)}
+.koka-ico-sliders{-webkit-mask-image:var(--kd-sliders);mask-image:var(--kd-sliders)}
 @media (max-width:1100px){.koka-card.span7,.koka-card.span5{grid-column:span 6}.koka-hero-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.koka-gauges{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:760px){.koka-card,.koka-card.span7,.koka-card.span5{grid-column:span 12}.koka-hero{grid-template-columns:1fr;padding:16px}.koka-hero-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.koka-grid{gap:12px}.koka-card{border-radius:14px}.koka-actions{grid-template-columns:1fr}.koka-hero-name{font-size:1.3rem}.koka-hero-actions .koka-action{flex:1 1 auto;justify-content:center}.koka-sys-top .koka-ring{width:84px;height:84px}.koka-gauges{grid-template-columns:repeat(2,minmax(0,1fr))}.koka-res-mid{grid-template-columns:1fr}.koka-res-chart{height:96px}.koka-proc-row{grid-template-columns:minmax(0,1fr) 50px 72px}.koka-proc-comp,.koka-proc-head span:nth-child(2){display:none}}
 @media (prefers-reduced-motion:reduce){.koka-action,.koka-bar i{transition:none}}
@@ -820,6 +840,15 @@ return view.extend({
 			hero.lastElementChild.appendChild(m.el);
 		});
 
+		const editBtn = E('button', {
+			'class': 'koka-action koka-edit-btn',
+			'type': 'button',
+			'title': 'Настроить дашборд'
+		}, [
+			E('span', { 'class': 'koka-ico koka-ico-sliders' }),
+			E('span', {}, 'Настроить')
+		]);
+
 		const actions = E('div', { 'class': 'koka-hero-actions' }, [
 			E('button', {
 				'class': 'koka-action',
@@ -833,7 +862,8 @@ return view.extend({
 			]),
 			action(L.url('admin/network/network'), 'koka-ico-net2', _('Interfaces')),
 			action(L.url('admin/services/dnsproxy'), 'koka-ico-dns', _('DNS Proxy')),
-			action(L.url('admin/system/reboot'), 'koka-ico-reboot', _('Reboot'))
+			action(L.url('admin/system/reboot'), 'koka-ico-reboot', _('Reboot')),
+			editBtn
 		]);
 
 		hero.appendChild(actions);
@@ -957,12 +987,8 @@ return view.extend({
 			action(L.url('admin/system/reboot'), 'koka-ico-reboot', _('Reboot'))
 		]));
 
-		/* Compact version of the Zapret Manager resource monitor. */
-		const res = card('koka-ico-pulse', 'Ресурсы', E('a', {
-			'class': 'koka-card-link',
-			'href': L.url('admin/services/zapret-manager/monitor'),
-			'title': 'Открыть монитор ресурсов Zapret Manager'
-		}, 'Подробнее'));
+		/* Resource monitor built from /proc, no Zapret Manager dependency. */
+		const res = card('koka-ico-pulse', 'Ресурсы');
 		res.el.classList.add('span12');
 
 		function gauge(label) {
@@ -1002,6 +1028,16 @@ return view.extend({
 
 		const procSort = E('div', { 'class': 'koka-proc-sort' });
 		const procBody = E('div', { 'class': 'koka-proc-body' });
+		const procMore = E('button', {
+			'type': 'button',
+			'class': 'koka-sort-btn',
+			'click': function() {
+				refs.procExpanded = !refs.procExpanded;
+				procMore.textContent = refs.procExpanded ? 'Свернуть' : 'Ещё';
+				if (refs.procData)
+					renderProcs(refs.procData);
+			}
+		}, 'Ещё');
 
 		function renderProcSort() {
 			procSort.innerHTML = '';
@@ -1023,13 +1059,19 @@ return view.extend({
 		function renderProcs(resData) {
 			refs.procData = resData;
 
-			const list = (resData.processes || []).filter(function(p) {
+			const all = (resData.processes || []).filter(function(p) {
 				return p.mem > 0;
-			}).slice().sort(function(a, b) {
+			}).sort(function(a, b) {
 				if (refs.procSortBy === 'cpu')
 					return b.cpu - a.cpu || b.mem - a.mem;
 				return b.mem - a.mem || b.cpu - a.cpu;
-			}).slice(0, 8);
+			});
+
+			const list = all.slice(0, refs.procExpanded ? 24 : 8);
+
+			procMore.style.display = all.length > 8 ? '' : 'none';
+			if (!refs.procExpanded)
+				procMore.textContent = 'Ещё';
 
 			dom.content(procBody, list.length ? list.map(function(p) {
 				return E('div', { 'class': 'koka-proc-row', 'title': p.cmd || p.name }, [
@@ -1045,17 +1087,14 @@ return view.extend({
 		}
 
 		refs.procSortBy = 'mem';
+		refs.procExpanded = false;
 		renderProcSort();
 
 		const procBlock = E('div', { 'class': 'koka-proc' }, [
 			E('div', { 'class': 'koka-res-head' }, [
 				E('span', {}, 'Процессы'),
 				procSort,
-				E('a', {
-					'class': 'koka-proc-all',
-					'href': L.url('admin/services/zapret-manager/monitor'),
-					'title': 'Открыть полный список процессов'
-				}, 'Все процессы →')
+				procMore
 			]),
 			E('div', { 'class': 'koka-proc-row koka-proc-head' }, [
 				E('span', {}, 'Процесс'),
@@ -1100,20 +1139,259 @@ return view.extend({
 		refs.resStack = resStack;
 		refs.resList = resList;
 		refs.resNote = resNote;
-		refs.resLink = res.el.firstElementChild.querySelector('.koka-card-link');
 		refs.renderProcs = renderProcs;
 
-		const grid = E('div', { 'class': 'koka-grid' }, [
-			internet.el,
-			system.el,
-			clients.el,
-			conn.el,
-			ports.el,
-			quick.el,
-			res.el
-		]);
+		const cardEls = {
+			internet: internet.el,
+			system: system.el,
+			clients: clients.el,
+			connections: conn.el,
+			ports: ports.el,
+			quick: quick.el,
+			resources: res.el
+		};
 
-		const dash = E('div', { 'class': 'koka-dash' }, [ hero, grid ]);
+		const CARD_TITLES = {
+			internet: 'Интернет',
+			system: 'Система',
+			clients: 'Клиенты',
+			connections: 'Соединения',
+			ports: 'Порты',
+			quick: 'Быстрые действия',
+			resources: 'Ресурсы'
+		};
+
+		const LAYOUT_KEY = 'koka-dashboard-layout-v1';
+		const DEFAULT_ORDER = [ 'internet', 'system', 'clients', 'connections', 'ports', 'quick', 'resources' ];
+		let layout = loadLayout();
+		let editing = false;
+		let dragId = null;
+
+		Object.keys(cardEls).forEach(function(id) {
+			cardEls[id].setAttribute('data-card', id);
+		});
+
+		function loadLayout() {
+			try {
+				const raw = localStorage.getItem(LAYOUT_KEY);
+
+				if (raw) {
+					const saved = JSON.parse(raw);
+
+					if (saved && Array.isArray(saved.order))
+						return {
+							order: saved.order.filter(function(id) { return !!cardEls[id]; }),
+							hidden: (saved.hidden || []).filter(function(id) { return !!cardEls[id]; })
+						};
+				}
+			} catch (e) {}
+
+			return { order: DEFAULT_ORDER.slice(), hidden: [] };
+		}
+
+		function saveLayout() {
+			try {
+				localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout));
+			} catch (e) {}
+		}
+
+		function applyLayout() {
+			const order = layout.order.filter(function(id) { return !!cardEls[id]; });
+
+			DEFAULT_ORDER.forEach(function(id) {
+				if (order.indexOf(id) < 0)
+					order.push(id);
+			});
+
+			layout.order = order;
+
+			order.forEach(function(id) {
+				grid.appendChild(cardEls[id]);
+				cardEls[id].style.display = layout.hidden.indexOf(id) >= 0 ? 'none' : '';
+			});
+
+			saveLayout();
+		}
+
+		function hideCard(id) {
+			if (layout.hidden.indexOf(id) < 0)
+				layout.hidden.push(id);
+
+			applyLayout();
+			renderTray();
+		}
+
+		function moveCard(id, delta) {
+			const order = layout.order.slice();
+			const from = order.indexOf(id);
+			const to = from + delta;
+
+			if (from < 0 || to < 0 || to >= order.length)
+				return;
+
+			order.splice(from, 1);
+			order.splice(to, 0, id);
+			layout.order = order;
+			applyLayout();
+		}
+
+		function renderTray() {
+			while (tray.firstChild)
+				tray.removeChild(tray.firstChild);
+
+			if (!editing)
+				return;
+
+			const hidden = layout.hidden.filter(function(id) { return !!cardEls[id]; });
+
+			tray.appendChild(E('span', { 'class': 'koka-tray-label' }, hidden.length ? 'Скрытые плашки:' : 'Все плашки на месте'));
+
+			hidden.forEach(function(id) {
+				tray.appendChild(E('button', {
+					'class': 'koka-tray-chip',
+					'type': 'button',
+					'click': function() {
+						layout.hidden = layout.hidden.filter(function(x) { return x !== id; });
+						applyLayout();
+						renderTray();
+					}
+				}, [ CARD_TITLES[id] || id, E('span', {}, ' +') ]));
+			});
+
+			tray.appendChild(E('button', {
+				'class': 'koka-tray-reset',
+				'type': 'button',
+				'click': function() {
+					layout = { order: DEFAULT_ORDER.slice(), hidden: [] };
+					applyLayout();
+					renderTray();
+				}
+			}, 'Сбросить'));
+		}
+
+		function toggleEdit() {
+			editing = !editing;
+			dash.classList.toggle('koka-editing', editing);
+			editBtn.classList.toggle('active', editing);
+			editBtn.lastElementChild.textContent = editing ? 'Готово' : 'Настроить';
+
+			Object.keys(cardEls).forEach(function(id) {
+				const card = cardEls[id];
+				const head = card.firstElementChild;
+				let grip = head.querySelector('.koka-grip');
+				let left = head.querySelector('.koka-move-l');
+				let right = head.querySelector('.koka-move-r');
+				let hide = head.querySelector('.koka-hide');
+
+				if (editing) {
+					card.setAttribute('draggable', 'true');
+
+					if (!grip) {
+						grip = E('span', { 'class': 'koka-grip', 'title': 'Перетащить', 'aria-hidden': 'true' }, '⋮⋮');
+						head.insertBefore(grip, head.firstChild);
+					}
+
+					if (!left) {
+						left = E('button', {
+							'class': 'koka-move koka-move-l',
+							'type': 'button',
+							'title': 'Влево',
+							'aria-label': 'Влево',
+							'click': function() { moveCard(id, -1); }
+						}, '‹');
+						head.appendChild(left);
+					}
+
+					if (!right) {
+						right = E('button', {
+							'class': 'koka-move koka-move-r',
+							'type': 'button',
+							'title': 'Вправо',
+							'aria-label': 'Вправо',
+							'click': function() { moveCard(id, 1); }
+						}, '›');
+						head.appendChild(right);
+					}
+
+					if (!hide) {
+						hide = E('button', {
+							'class': 'koka-hide',
+							'type': 'button',
+							'title': 'Скрыть',
+							'aria-label': 'Скрыть',
+							'click': function() { hideCard(id); }
+						}, '×');
+						head.appendChild(hide);
+					}
+				}
+				else {
+					card.removeAttribute('draggable');
+					[ grip, left, right, hide ].forEach(function(node) {
+						if (node && node.parentNode)
+							node.parentNode.removeChild(node);
+					});
+				}
+			});
+
+			renderTray();
+		}
+
+		const tray = E('div', { 'class': 'koka-tray' });
+		const grid = E('div', { 'class': 'koka-grid' }, DEFAULT_ORDER.map(function(id) { return cardEls[id]; }));
+		const dash = E('div', { 'class': 'koka-dash' }, [ hero, grid, tray ]);
+
+		Object.keys(cardEls).forEach(function(id) {
+			const card = cardEls[id];
+
+			card.addEventListener('dragstart', function(ev) {
+				if (!editing) {
+					ev.preventDefault();
+					return;
+				}
+
+				dragId = id;
+				ev.dataTransfer.effectAllowed = 'move';
+
+				try {
+					ev.dataTransfer.setData('text/plain', id);
+				} catch (e) {}
+
+				card.classList.add('koka-dragging');
+			});
+
+			card.addEventListener('dragend', function() {
+				card.classList.remove('koka-dragging');
+
+				if (!dragId)
+					return;
+
+				dragId = null;
+				layout.order = Array.prototype.map.call(grid.children, function(node) {
+					return node.getAttribute('data-card');
+				}).filter(Boolean);
+				saveLayout();
+			});
+
+			card.addEventListener('dragover', function(ev) {
+				if (!editing || !dragId || dragId === id)
+					return;
+
+				ev.preventDefault();
+
+				const dragEl = cardEls[dragId];
+
+				if (!dragEl)
+					return;
+
+				const rect = card.getBoundingClientRect();
+				const before = (ev.clientY - rect.top) < rect.height / 2;
+
+				grid.insertBefore(dragEl, before ? card : card.nextSibling);
+			});
+		});
+
+		editBtn.addEventListener('click', toggleEdit);
+		applyLayout();
 
 		const self = this;
 
@@ -1245,7 +1523,7 @@ return view.extend({
 
 		const ramValue = pct(resData.memUsed, resData.memTotal);
 		setGauge(refs.gRam, ramValue, Math.round(ramValue) + '%', '#34d399',
-			fmtBytes(resData.memUsed * 1024) + ' из ' + fmtBytes(resData.memTotal * 1024));
+			fmtBytes(resData.memUsed) + ' из ' + fmtBytes(resData.memTotal));
 
 		const flashValue = pct(resData.flashUsed, resData.flashTotal);
 		setGauge(refs.gFlash, flashValue, Math.round(flashValue) + '%', '#a78bfa',
@@ -1273,10 +1551,7 @@ return view.extend({
 
 		setText(refs.resNote, resData.available
 			? 'Память по сервисам · ' + fmtBytes(resData.procMem) + ' · обновление каждые 5 с'
-			: 'Zapret Manager недоступен — показаны только общие метрики');
-
-		if (refs.resLink)
-			refs.resLink.style.display = resData.available ? '' : 'none';
+			: 'Нет данных по процессам');
 
 		setText(refs.clientsCount, onlineClients + ' / ' + clients.length);
 		dom.content(refs.clients, clients.length ? clients.slice(0, 7).map(function(client) {

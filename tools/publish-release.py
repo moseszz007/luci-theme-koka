@@ -18,7 +18,9 @@ BODY = """Koka Modern for LuCI - тёмный скин поверх luci-theme-f
 - Keenetic-подобный дашборд: Статус -> Дашборд (Обзор не тронут)
 - Карточка **Ресурсы**: кольцевые индикаторы CPU/температуры/памяти/флеша,
   5-минутный график, память по сервисам и список процессов с сортировкой
-  по памяти/CPU (использует монитор Zapret Manager, если он установлен)
+  по памяти/CPU. Данные из `/proc`, без внешних сервисов
+- **Настройка дашборда**: скрыть/вернуть/переместить плашки, раскладка
+  запоминается в браузере
 - В Система -> Дизайн тема называется **Koka** (движок остаётся footstrap)
 - Единый линейный набор иконок: меню, интерфейсы, порты, Wi-Fi
 - Иконки интерфейсов по протоколу: AmneziaWG, WireGuard, PPPoE, bridge, ZeroTier
@@ -26,12 +28,12 @@ BODY = """Koka Modern for LuCI - тёмный скин поверх luci-theme-f
 
 ## Установка (opkg)
 
-    opkg install luci-theme-koka_2026.11.27-r4_all.ipk
+    opkg install luci-theme-koka_2026.11.27-r5_all.ipk
 
 ## Установка (apk)
 
     cp luci-theme-koka.rsa.pub /etc/apk/keys/
-    apk add --allow-untrusted luci-theme-koka-2026.11.27-r4.apk
+    apk add --allow-untrusted luci-theme-koka-2026.11.27-r5.apk
 
 После установки пакет сам применяет скин и дашборд. Удаление пакета
 возвращает стоковый вид.
@@ -42,9 +44,9 @@ BODY = """Koka Modern for LuCI - тёмный скин поверх luci-theme-f
 
 def main():
     payload = {
-        'tag_name': 'v2026.11.27-r4',
+        'tag_name': 'v2026.11.27-r5',
         'target_commitish': 'main',
-        'name': 'Koka Modern 2026.11.27-r4',
+        'name': 'Koka Modern 2026.11.27-r5',
         'body': BODY,
         'draft': False,
         'prerelease': False,
@@ -61,8 +63,8 @@ def main():
     rid = rel['id']
 
     for path in (
-        'dist/luci-theme-koka_2026.11.27-r4_all.ipk',
-        'dist/luci-theme-koka-2026.11.27-r4.apk',
+        'dist/luci-theme-koka_2026.11.27-r5_all.ipk',
+        'dist/luci-theme-koka-2026.11.27-r5.apk',
         'dist/luci-theme-koka.rsa.pub',
     ):
         data = Path(path).read_bytes()
