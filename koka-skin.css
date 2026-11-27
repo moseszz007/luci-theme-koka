@@ -658,3 +658,62 @@ ul.dropdown > li:hover {
 	background: color-mix(in srgb, var(--fs-accent) 35%, transparent);
 	color: var(--fs-text);
 }
+
+/* ==== Koka glass selection / focus ring ==== */
+:focus-visible {
+	outline: 2px solid color-mix(in srgb, #ffffff 78%, var(--fs-accent)) !important;
+	outline-offset: 2px !important;
+	box-shadow:
+		0 0 0 3px color-mix(in srgb, var(--fs-accent) 22%, transparent),
+		0 0 20px color-mix(in srgb, var(--fs-accent) 45%, transparent) !important;
+}
+
+/* Clicking a field should show the same frame, not only keyboard focus. */
+input:focus,
+select:focus,
+textarea:focus,
+.cbi-dropdown:focus,
+.cbi-dropdown[open],
+.cbi-dynlist .item:focus {
+	outline: 2px solid color-mix(in srgb, #ffffff 78%, var(--fs-accent)) !important;
+	outline-offset: 2px !important;
+	box-shadow:
+		0 0 0 3px color-mix(in srgb, var(--fs-accent) 22%, transparent),
+		0 0 20px color-mix(in srgb, var(--fs-accent) 45%, transparent) !important;
+}
+
+/* Filled buttons need a white edge plus a dark inner ring. */
+.cbi-button-positive:focus-visible,
+.cbi-button-action:focus-visible,
+.cbi-button-negative:focus-visible,
+.cbi-button-remove:focus-visible,
+.cbi-button-apply:focus-visible,
+.cbi-button-save:focus-visible,
+.btn.primary:focus-visible,
+.btn.danger:focus-visible,
+.btn.error:focus-visible,
+.btn.success:focus-visible,
+.btn.info:focus-visible {
+	outline-color: #ffffff !important;
+	box-shadow:
+		0 0 0 2px color-mix(in srgb, var(--fs-on-accent, #07101f) 55%, transparent),
+		0 0 0 6px color-mix(in srgb, var(--fs-accent) 28%, transparent),
+		0 0 22px color-mix(in srgb, var(--fs-accent) 50%, transparent) !important;
+}
+
+/* Invalid fields keep a red frame instead of the accent one. */
+:invalid:focus-visible,
+input:invalid:focus,
+select:invalid:focus,
+textarea:invalid:focus {
+	outline-color: var(--fs-danger) !important;
+	box-shadow:
+		0 0 0 3px color-mix(in srgb, var(--fs-danger) 25%, transparent),
+		0 0 20px color-mix(in srgb, var(--fs-danger) 45%, transparent) !important;
+}
+
+/* Selected text: a glassy accent wash, readable in both modes. */
+::selection {
+	background: color-mix(in srgb, var(--fs-accent) 45%, transparent);
+	color: var(--fs-text);
+}

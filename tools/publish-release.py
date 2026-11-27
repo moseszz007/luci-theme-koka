@@ -37,12 +37,12 @@ BODY = """Koka Modern for LuCI - тёмный скин поверх luci-theme-f
 
 ## Установка (opkg)
 
-    opkg install luci-theme-koka_2026.11.27-r15_all.ipk
+    opkg install luci-theme-koka_2026.11.27-r16_all.ipk
 
 ## Установка (apk)
 
     cp luci-theme-koka.rsa.pub /etc/apk/keys/
-    apk add --allow-untrusted luci-theme-koka-2026.11.27-r15.apk
+    apk add --allow-untrusted luci-theme-koka-2026.11.27-r16.apk
 
 После установки пакет сам применяет скин и дашборд. Удаление пакета
 возвращает стоковый вид.
@@ -53,9 +53,9 @@ BODY = """Koka Modern for LuCI - тёмный скин поверх luci-theme-f
 
 def main():
     payload = {
-        'tag_name': 'v2026.11.27-r15',
+        'tag_name': 'v2026.11.27-r16',
         'target_commitish': 'main',
-        'name': 'Koka Modern 2026.11.27-r15',
+        'name': 'Koka Modern 2026.11.27-r16',
         'body': BODY,
         'draft': False,
         'prerelease': False,
@@ -72,8 +72,8 @@ def main():
     rid = rel['id']
 
     for path in (
-        'dist/luci-theme-koka_2026.11.27-r15_all.ipk',
-        'dist/luci-theme-koka-2026.11.27-r15.apk',
+        'dist/luci-theme-koka_2026.11.27-r16_all.ipk',
+        'dist/luci-theme-koka-2026.11.27-r16.apk',
         'dist/luci-theme-koka.rsa.pub',
     ):
         data = Path(path).read_bytes()
