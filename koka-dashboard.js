@@ -703,7 +703,7 @@ button.koka-action{font:inherit;cursor:pointer}
 .koka-editing .koka-card{outline:1px dashed color-mix(in srgb,var(--a) 45%,transparent);outline-offset:2px}
 .koka-card.koka-dragging{opacity:.5}
 .koka-grip{cursor:grab;color:var(--c);font-size:.8rem;line-height:1;letter-spacing:-2px;flex:0 0 auto;user-select:none}
-.koka-hide,.koka-move{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border-radius:7px;border:1px solid color-mix(in srgb,var(--S) 60%,transparent);background:color-mix(in srgb,var(--V) 60%,transparent);color:var(--c);font:inherit;font-size:.8rem;line-height:1;cursor:pointer;flex:0 0 auto}
+.koka-hide,.koka-move{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border-radius:8px;border:1px solid color-mix(in srgb,var(--S) 60%,transparent);background:color-mix(in srgb,var(--V) 60%,transparent);color:var(--c);font:inherit;font-size:.8rem;line-height:1;cursor:pointer;flex:0 0 auto}
 .koka-hide:hover{border-color:#fb7185;color:#fb7185}
 .koka-move:hover{border-color:var(--a);color:var(--d)}
 .koka-tray{display:none}
@@ -768,7 +768,7 @@ button.koka-action{font:inherit;cursor:pointer}
 .koka-port-speed{display:block;font-size:.72rem;color:var(--c)}
 .koka-port-bytes{display:block;font-size:.68rem;color:var(--c);font-family:var(--M);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .koka-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.koka-action{display:flex;align-items:center;gap:9px;padding:10px;border-radius:11px;border:1px solid color-mix(in srgb,var(--S) 50%,transparent);background:color-mix(in srgb,var(--V) 45%,transparent);color:var(--d);text-decoration:none;font-size:.8rem;font-weight:600;min-width:0;transition:background .15s,border-color .15s,transform .15s}
+.koka-action{display:flex;align-items:center;gap:9px;padding:10px;border-radius:12px;border:1px solid color-mix(in srgb,var(--S) 50%,transparent);background:color-mix(in srgb,var(--V) 45%,transparent);color:var(--d);text-decoration:none;font-size:.8rem;font-weight:600;min-width:0;transition:background .15s,border-color .15s,transform .15s}
 .koka-action:hover{background:color-mix(in srgb,var(--a) 10%,var(--V));border-color:color-mix(in srgb,var(--a) 35%,transparent);transform:translateY(-1px)}
 .koka-action .koka-ico{width:17px;height:17px;color:var(--a);flex:0 0 auto}
 .koka-action span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
