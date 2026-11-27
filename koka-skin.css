@@ -506,6 +506,25 @@ button.cbi-button-reset::before {
 	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fs-accent) 32%, transparent) !important;
 }
 
+/* Hover: the same glass frame, one step lighter than the active item. */
+#topmenu ul a:hover:not(.active):not([aria-current="page"]),
+.fs-sidebar ul.nav ul a:hover:not(.active):not([aria-current="page"]) {
+	background: color-mix(in srgb, var(--fs-accent) 12%, transparent) !important;
+	color: var(--fs-text) !important;
+	border-radius: var(--fs-radius-sm) !important;
+	box-shadow:
+		inset 0 0 0 1px color-mix(in srgb, var(--fs-accent) 34%, transparent),
+		0 0 14px color-mix(in srgb, var(--fs-accent) 14%, transparent) !important;
+}
+
+#topmenu > li:not(.active) > a:hover,
+.fs-sidebar ul.nav > li:not(.active) > a:hover {
+	background: color-mix(in srgb, var(--fs-accent) 10%, transparent) !important;
+	color: var(--fs-text) !important;
+	border-radius: var(--fs-radius-sm) !important;
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fs-accent) 28%, transparent) !important;
+}
+
 /* ==== Koka polish: one token set, one radius scale, consistent cursors ==== */
 :root {
 	--fs-accent: var(--J);
@@ -636,6 +655,8 @@ ul.dropdown {
 .cbi-dropdown > ul.dropdown > li:hover,
 ul.dropdown > li:hover {
 	background: color-mix(in srgb, var(--fs-accent) 10%, transparent);
+	border-radius: calc(var(--fs-radius) - 2px);
+	box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fs-accent) 25%, transparent);
 }
 
 /* Progress bars and tooltips. */
