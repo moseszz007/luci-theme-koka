@@ -157,7 +157,7 @@ def add_dir(tf, name, mode, epoch):
     tf.addfile(info)
 
 
-def add_file(tf, name, data, mode, epoch):
+def add_file(tf, name, data, mode, epoch, checksum=False):
     info = tarfile.TarInfo(name)
     info.size = len(data)
     info.mode = mode
@@ -166,13 +166,18 @@ def add_file(tf, name, data, mode, epoch):
     info.uname = 'root'
     info.gname = 'root'
     info.mtime = epoch
+    if checksum:
+        # apk v2 needs per-file checksums in a pax header; apk-tools 3.x
+        # rejects files without them ("file format is obsolete").
+        info.pax_headers = {'APK-TOOLS.checksum.SHA1': hashlib.sha1(data).hexdigest()}
     tf.addfile(info, io.BytesIO(data))
 
 
-def tar_bytes(files, prefix, include_root, trailer, epoch):
+def tar_bytes(files, prefix, include_root, trailer, epoch, checksum=False):
     buf = io.BytesIO()
+    fmt = tarfile.PAX_FORMAT if checksum else tarfile.GNU_FORMAT
 
-    with TarWriter(fileobj=buf, mode='w', format=tarfile.GNU_FORMAT) as tf:
+    with TarWriter(fileobj=buf, mode='w', format=fmt) as tf:
         if include_root:
             add_dir(tf, './', 0o755, epoch)
 
@@ -180,7 +185,7 @@ def tar_bytes(files, prefix, include_root, trailer, epoch):
             add_dir(tf, prefix + directory + '/', 0o755, epoch)
 
         for name, data, mode in files:
-            add_file(tf, prefix + name, data, mode, epoch)
+            add_file(tf, prefix + name, data, mode, epoch, checksum)
 
     data = buf.getvalue()
 
@@ -311,7 +316,7 @@ def load_key(keydir, sign):
 
 
 def build_apk(files, version, epoch, private_key):
-    data_tar = tar_bytes(files, '', False, True, epoch)
+    data_tar = tar_bytes(files, '', False, True, epoch, True)
     data_gz = gzip_bytes(data_tar)
     datahash = hashlib.sha256(data_gz).hexdigest()
 
@@ -386,6 +391,14 @@ def verify_apk(data, version, public_key):
 
     with tarfile.open(fileobj=io.BytesIO(members[-1]), mode='r:') as payload:
         payload_names = payload.getnames()
+        payload_members = payload.getmembers()
+
+    missing = [
+        item.name for item in payload_members
+        if item.isreg() and 'APK-TOOLS.checksum.SHA1' not in item.pax_headers
+    ]
+    if missing:
+        raise RuntimeError('apk files without embedded checksum: %s' % ', '.join(missing))
 
     fields = {}
     for line in pkginfo.splitlines():
