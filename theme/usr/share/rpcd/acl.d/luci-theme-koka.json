@@ -2,6 +2,12 @@
 	"luci-theme-koka": {
 		"description": "Koka theme settings saved to the router, the login background and pattern uploads, and the Koka settings page",
 		"read": {
+			"ubus": {
+				"file": [
+					"read",
+					"stat"
+				]
+			},
 			"uci": [
 				"koka"
 			]
@@ -13,7 +19,8 @@
 					"commit"
 				],
 				"file": [
-					"remove"
+					"remove",
+					"exec"
 				]
 			},
 			"uci": [
@@ -30,6 +37,9 @@
 				"/etc/koka/pattern.svg": [
 					"write",
 					"remove"
+				],
+				"/usr/share/koka/update-theme.sh": [
+					"exec"
 				]
 			}
 		}

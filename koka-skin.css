@@ -150,23 +150,31 @@ html:not([data-palette])[data-darkmode="false"] body {
 	backdrop-filter: blur(20px) saturate(1.2);
 }
 
-/* Popups: no backdrop-filter at all. A filter on an element that is being
- * shown (display/new node + opacity transition) cannot be animated, so the
- * blur snaps in a frame later and the popup "assembles in layers". A near
- * opaque panel looks the same and appears in a single frame. */
+/* Popups: настоящий блюр на самом элементе. Ключевой момент — такие
+ * элементы не должны анимировать opacity: Chrome на время анимации
+ * прозрачности отключает backdrop-filter, и блюр «включался» отдельным
+ * слоем уже после появления окна. Появление — только transform (см.
+ * koka-pop-in ниже), фильтр работает с первого кадра. */
 .koka-glass .modal {
-	background: color-mix(in srgb, var(--an) 96%, transparent) !important;
+	background: color-mix(in srgb, var(--an) 78%, transparent) !important;
 	border-color: rgba(255, 255, 255, .12) !important;
 	box-shadow: 0 24px 60px rgba(2, 8, 23, .38) !important;
+	-webkit-backdrop-filter: blur(22px) saturate(1.2);
+	backdrop-filter: blur(22px) saturate(1.2);
 }
 
 .koka-glass .fs-search-box {
-	background: var(--fs-panel) !important;
+	background: color-mix(in srgb, var(--an) 80%, transparent) !important;
 	border-color: var(--fs-border) !important;
+	-webkit-backdrop-filter: blur(20px) saturate(1.2);
+	backdrop-filter: blur(20px) saturate(1.2);
 }
 
+/* Оверлей не анимируем: иначе модалка внутри него не может показать блюр,
+ * пока не закончится fade оверлея. */
 .koka-glass #modal_overlay {
-	background: rgba(3, 7, 18, .58) !important;
+	background: rgba(3, 7, 18, .55) !important;
+	transition: none !important;
 }
 
 .cbi-page-actions {
@@ -185,7 +193,9 @@ html:not([data-palette])[data-darkmode="false"] body {
 
 .koka-glass ul.dropdown,
 .koka-glass .cbi-dropdown > ul.dropdown {
-	background: color-mix(in srgb, var(--an) 97%, transparent) !important;
+	background: color-mix(in srgb, var(--an) 82%, transparent) !important;
+	-webkit-backdrop-filter: blur(20px) saturate(1.2);
+	backdrop-filter: blur(20px) saturate(1.2);
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -213,11 +223,21 @@ html:not([data-palette])[data-darkmode="false"] body {
 	box-shadow: 0 8px 22px color-mix(in srgb, var(--a) 28%, transparent);
 }
 
-/* The top chrome gets a touch of depth without blur. */
 .fs-bar,
 header.fs-bar {
 	border-bottom: 1px solid color-mix(in srgb, var(--S) 70%, transparent) !important;
 	box-shadow: 0 6px 24px rgba(2, 8, 23, .14) !important;
+}
+
+/* Шапка — стекло: полупрозрачный фон + blur. Элемент не анимируется,
+ * поэтому фильтр не «прыгает»; на телефоне сила блюра меньше (см. ниже). */
+.koka-glass .fs-bar,
+.koka-glass header.fs-bar {
+	background: color-mix(in srgb, var(--an) 62%, transparent) !important;
+	border-bottom: 1px solid rgba(255, 255, 255, .10) !important;
+	box-shadow: 0 8px 30px rgba(2, 8, 23, .18) !important;
+	-webkit-backdrop-filter: blur(18px) saturate(1.2);
+	backdrop-filter: blur(18px) saturate(1.2);
 }
 
 @media (max-width: 767px) {
@@ -454,17 +474,15 @@ button.cbi-button-reset::before {
 	z-index: 860 !important;
 }
 
-/* Flyouts are a single opaque-ish panel. They used to get their blur from a
- * separate body-level "frost" layer that faded in 120ms after the menu was
- * already visible — that read as three layers (menu, background, blur) and
- * cost a full-page blur on phones. One panel, one frame, no extra layer. */
+/* Выпадающие меню: блюр на самой панели, без отдельного слоя-«морозилки»,
+ * который раньше подключался через opacity уже после появления меню. */
 .koka-glass .fs-sidebar ul.nav ul,
 .koka-glass #topmenu ul {
-	background: color-mix(in srgb, var(--an) 97%, transparent) !important;
+	background: color-mix(in srgb, var(--an) 78%, transparent) !important;
 	border-color: rgba(255, 255, 255, .14) !important;
 	box-shadow: 0 18px 46px rgba(2, 8, 23, .32) !important;
-	-webkit-backdrop-filter: none !important;
-	backdrop-filter: none !important;
+	-webkit-backdrop-filter: blur(20px) saturate(1.15);
+	backdrop-filter: blur(20px) saturate(1.15);
 }
 
 .koka-menu-frost { display: none !important; }
@@ -742,16 +760,40 @@ textarea:invalid:focus {
 		0 0 20px color-mix(in srgb, var(--fs-danger) 45%, transparent) !important;
 }
 
+/* Лог обновления темы (Система -> Koka -> Обновление). */
+.fs-ap-out {
+	margin-top: 12px;
+	padding: 10px 12px;
+	max-height: 220px;
+	overflow: auto;
+	white-space: pre-wrap;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: .85em;
+	border-radius: 10px;
+	background: color-mix(in srgb, var(--V) 85%, transparent);
+	border: 1px solid var(--S);
+}
+
+.fs-ap-updaterow {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+	align-items: center;
+	margin-top: 10px;
+}
+
 /* Selected text: a glassy accent wash, readable in both modes. */
 ::selection {
 	background: color-mix(in srgb, var(--fs-accent) 45%, transparent);
 	color: var(--fs-text);
 }
 
-/* ==== Popups enter as one piece ==== */
+/* ==== Popups enter as one piece ====
+ * Только transform: opacity-анимация выключает backdrop-filter у потомков
+ * (и у самого элемента), из-за чего блюр появлялся отдельным слоем. */
 @keyframes koka-pop-in {
-	from { opacity: 0; transform: translateY(-4px); }
-	to   { opacity: 1; transform: translateY(0); }
+	from { transform: translateY(-4px) scale(.995); }
+	to   { transform: translateY(0) scale(1); }
 }
 
 .koka-glass #topmenu ul,
@@ -773,19 +815,33 @@ textarea:invalid:focus {
 		background-attachment: scroll !important;
 	}
 
+	/* Карточки — плотные: именно они пересобирают блюр на каждом кадре
+	 * скролла. Стекло оставляем только там, где оно статично и малó:
+	 * шапка, выпадашки и модалки. */
 	.koka-glass #view .cbi-section,
 	.koka-glass .fs-ap-card,
 	.koka-glass .fs-sidebar,
-	.koka-glass .modal,
-	.koka-glass #modal_overlay,
-	.koka-glass .fs-search-box,
 	.koka-glass .cbi-page-actions,
 	.koka-glass .ifacebox,
-	.koka-glass .alert-message,
-	.koka-glass ul.dropdown,
-	.koka-glass .cbi-dropdown > ul.dropdown {
+	.koka-glass .alert-message {
 		-webkit-backdrop-filter: none !important;
 		backdrop-filter: none !important;
+	}
+
+	.koka-glass .fs-bar,
+	.koka-glass header.fs-bar,
+	.koka-glass .modal,
+	.koka-glass .fs-search-box {
+		-webkit-backdrop-filter: blur(10px) saturate(1.15);
+		backdrop-filter: blur(10px) saturate(1.15);
+	}
+
+	.koka-glass ul.dropdown,
+	.koka-glass .cbi-dropdown > ul.dropdown,
+	.koka-glass .fs-sidebar ul.nav ul,
+	.koka-glass #topmenu ul {
+		-webkit-backdrop-filter: blur(14px) saturate(1.1);
+		backdrop-filter: blur(14px) saturate(1.1);
 	}
 
 	.koka-glass #view .cbi-section,
@@ -795,11 +851,8 @@ textarea:invalid:focus {
 		box-shadow: 0 6px 18px rgba(2, 8, 23, .16) !important;
 	}
 
-	/* A filter on the bar would still re-blur on every scroll frame. */
 	.koka-glass .fs-bar,
 	.koka-glass header.fs-bar {
-		-webkit-backdrop-filter: none !important;
-		backdrop-filter: none !important;
-		background: var(--an) !important;
+		background: color-mix(in srgb, var(--an) 76%, transparent) !important;
 	}
 }
