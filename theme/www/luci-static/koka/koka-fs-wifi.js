@@ -225,7 +225,7 @@
 						note = iface;
 					}
 					else if (r) {
-						pill = netPill(r.ok ? 'есть' : 'нет', r.ok ? 'good' : 'bad');
+						pill = netPill(r.ok ? 'онлайн' : 'офлайн', r.ok ? 'good' : 'bad');
 						note = host + (r.ms != null ? ' · ' + Math.round(r.ms) + ' мс' : '');
 					}
 					else {
