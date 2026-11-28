@@ -451,7 +451,7 @@
 		var box = E('div', { class: 'koka-net-extra' });
 		var host = card.querySelector('.koka-card-body') || card;
 
-		host.appendChild(box);
+		host.insertBefore(box, host.firstChild);
 		refreshInternet(box);
 		window.setInterval(function () { refreshInternet(box); }, 15000);
 
@@ -877,34 +877,24 @@
 		function wifiKeys() {
 		return run(UCI, [ '-q', 'show', 'wireless' ]).then(function (res) {
 			var secs = {};
-			var cur = null;
 			var map = {};
 
 			(res.stdout || '').split('\n').forEach(function (line) {
-				var s = line.match(/^wireless\.([^.=]+)=(\w+)$/);
-				var o = line.match(/^\s*option\s+(\w+)\s+'([^']*)'\s*$/);
+				var m = line.match(/^wireless\.([^.=]+)\.(\w+)='([^']*)'$/);
 
-				if (s) {
-					cur = { type: s[2], opts: {} };
-					secs[s[1]] = cur;
+				if (!m)
 					return;
-				}
 
-				if (o && cur)
-					cur.opts[o[1]] = o[2];
+				secs[m[1]] = secs[m[1]] || {};
+				secs[m[1]][m[2]] = m[3];
 			});
 
 			Object.keys(secs).forEach(function (k) {
 				var c = secs[k];
+				var key = c.key || c.sae_password || c.password || c.wpa_psk;
 
-				if (c.type !== 'wifi-iface')
-					return;
-
-				var ssid = c.opts.ssid;
-				var key = c.opts.key || c.opts.sae_password || c.opts.password;
-
-				if (ssid && key)
-					map[ssid] = key;
+				if (c.ssid && key)
+					map[c.ssid] = key;
 			});
 
 			return map;
