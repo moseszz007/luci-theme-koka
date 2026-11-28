@@ -457,6 +457,204 @@
 		return true;
 	}
 
+	var ACTION_ICONS = [
+		'koka-ico-net', 'koka-ico-net2', 'koka-ico-shield', 'koka-ico-dns', 'koka-ico-wifi',
+		'koka-ico-plug', 'koka-ico-bolt', 'koka-ico-services', 'koka-ico-dhcp',
+		'koka-ico-reboot', 'koka-ico-pulse', 'koka-ico-sliders', 'koka-ico-users', 'koka-ico-link'
+	];
+
+	function loadActions() {
+		try {
+			var v = JSON.parse(localStorage.getItem('koka-actions') || 'null');
+			return Array.isArray(v) ? v : null;
+		}
+		catch (e) { return null; }
+	}
+
+	function saveActions(list) {
+		try { localStorage.setItem('koka-actions', JSON.stringify(list)); } catch (e) {}
+	}
+
+	function quickCard() {
+		var cards = [].slice.call(document.querySelectorAll('.koka-card'));
+
+		for (var i = 0; i < cards.length; i++) {
+			var t2 = cards[i].querySelector('.koka-card-title');
+
+			if (t2 && t2.textContent.trim() === 'Быстрые действия')
+				return cards[i];
+		}
+
+		return null;
+	}
+
+	function renderActions() {
+		var card = quickCard();
+
+		if (!card)
+			return false;
+
+		var box = card.querySelector('.koka-actions');
+
+		if (!box)
+			return false;
+
+		var list = loadActions();
+
+		if (!list) {
+			/* первый запуск: берём то, что нарисовал сам дашборд */
+			list = [].slice.call(box.querySelectorAll('a.koka-action')).map(function (a) {
+				var ico = a.querySelector('.koka-ico');
+				var label = (a.querySelector('span:not(.koka-ico)') || {}).textContent || a.textContent.trim();
+
+				return {
+					label: label.trim(),
+					url: a.getAttribute('href') || '',
+					icon: ico ? ([].slice.call(ico.classList).filter(function (c) { return /^koka-ico-/.test(c); })[0] || 'koka-ico-net') : 'koka-ico-net'
+				};
+			});
+
+			saveActions(list);
+		}
+
+		box.replaceChildren.apply(box, list.map(function (a) {
+			return E('a', { class: 'koka-action', href: a.url, title: a.label }, [
+				E('span', { class: 'koka-ico ' + a.icon }),
+				E('span', {}, a.label)
+			]);
+		}));
+
+		/* шестерёнка в заголовке карточки */
+		var head = card.querySelector('.koka-card-head');
+
+		if (head && !head.querySelector('.koka-actions-edit')) {
+			var gear = E('button', { class: 'koka-actions-edit', type: 'button', title: 'Настроить кнопки' }, '⚙');
+			gear.addEventListener('click', function () { editActions(); });
+			head.appendChild(gear);
+		}
+
+		return true;
+	}
+
+	function editActions() {
+		return need('ui').then(function (ui) {
+			return editActionsUi(ui);
+		});
+	}
+
+	function editActionsUi(ui) {
+		var list = (loadActions() || []).map(function (a) {
+			return { label: a.label || '', url: a.url || '', icon: a.icon || 'koka-ico-net' };
+		});
+
+		function row(a, i) {
+			var iconSel = E('select', { class: 'cbi-select' },
+				ACTION_ICONS.map(function (c) { return E('option', { value: c }, c.replace('koka-ico-', '')); }));
+			var labelInp = E('input', { class: 'cbi-input-text', type: 'text', value: a.label, placeholder: 'Название' });
+			var urlInp = E('input', { class: 'cbi-input-text', type: 'text', value: a.url, placeholder: '/cgi-bin/luci/...' });
+
+			iconSel.value = a.icon;
+
+			return E('div', { class: 'koka-ae-row' }, [
+				labelInp, urlInp, iconSel,
+				E('button', {
+					class: 'btn cbi-button-remove', type: 'button', click: function (ev) {
+						ev.preventDefault();
+						list.splice(i, 1);
+						open();
+					}
+				}, '×')
+			]);
+		}
+
+		function open() {
+			var body = E('div', { class: 'koka-ae' }, [
+				E('p', { class: 'cbi-value-description' },
+					'Свои кнопки для блока «Быстрые действия». Иконку выбираешь из набора темы; адрес — любой путь LuCI (например /cgi-bin/luci/admin/network/firewall).'),
+				E('div', {},
+					list.length
+						? list.map(row)
+						: [ E('p', { class: 'koka-empty' }, 'Пока пусто — добавь первую кнопку.') ])
+			]);
+
+			ui.showModal('Кнопки быстрых действий', [
+				body,
+				E('div', { class: 'right' }, [
+					E('button', {
+						class: 'btn', type: 'button', click: function (ev) {
+							ev.preventDefault();
+							list.push({ label: '', url: '', icon: 'koka-ico-net' });
+							ui.hideModal();
+							editActions();
+						}
+					}, 'Добавить'),
+					' ',
+					E('button', { class: 'btn cbi-button-negative', type: 'button', click: ui.hideModal }, 'Отмена'),
+					' ',
+					E('button', {
+						class: 'btn cbi-button-apply', type: 'button', click: function (ev) {
+							ev.preventDefault();
+							var rows = [].slice.call(body.querySelectorAll('.koka-ae-row'));
+							var out = [];
+
+							rows.forEach(function (r) {
+								var f = r.querySelectorAll('input, select');
+								var label = f[0].value.trim();
+								var url = f[1].value.trim();
+
+								if (label && url)
+									out.push({ label: label, url: url, icon: f[2].value });
+							});
+
+							saveActions(out);
+							ui.hideModal();
+							renderActions();
+						}
+					}, 'Сохранить')
+				])
+			]);
+
+			return body;
+		}
+
+		open();
+		return true;
+	}
+
+	function setupHeroTools() {
+		var anchors = [].slice.call(document.querySelectorAll('a.koka-action'));
+		var pick = function (re) {
+			return anchors.filter(function (a) { return re.test(a.textContent.trim()); })[0];
+		};
+
+		var refresh = pick(/^Обновить$/);
+		var tune = pick(/^Настроить$/);
+
+		if (!refresh || !tune || refresh.__kokaTool)
+			return false;
+
+		refresh.__kokaTool = true;
+
+		var host = refresh.parentNode;
+		var wrap = E('div', { class: 'koka-tools' });
+
+		[[refresh, 'koka-ico-refresh', 'Обновить', 'accent'], [tune, 'koka-ico-sliders', 'Настроить', '']]
+			.forEach(function (item) {
+				var a = item[0];
+
+				a.textContent = '';
+				a.className = 'koka-action koka-toolbtn ' + item[3];
+				a.setAttribute('title', item[2]);
+				a.setAttribute('aria-label', item[2]);
+				a.appendChild(E('span', { class: 'koka-ico ' + item[1] }));
+				wrap.appendChild(a);
+			});
+
+		host.appendChild(wrap);
+
+		return true;
+	}
+
 	function boot() {
 		if (document.body.getAttribute('data-page') !== 'admin-status-koka')
 			return;
@@ -549,8 +747,10 @@
 			var attached = attach();
 			var injected = injectInternet();
 			var ports = decoratePorts();
+			var acts = renderActions();
+			var tools = setupHeroTools();
 
-			if ((attached && injected && ports) || ++tries > 60) {
+			if ((attached && injected && ports && acts && tools) || ++tries > 60) {
 				window.clearInterval(timer);
 				refresh();
 			}

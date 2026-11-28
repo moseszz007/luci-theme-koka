@@ -846,6 +846,83 @@ textarea:invalid:focus {
 	--koka-bg-op: 1;
 }
 
+/* ==== Кнопки-иконки «Обновить» и «Настроить» в шапке дашборда ==== */
+.koka-tools {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	margin-inline-start: auto;
+}
+
+.koka-toolbtn {
+	width: 34px;
+	height: 34px;
+	padding: 0 !important;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 10px;
+	border: 1px solid color-mix(in srgb, var(--S) 60%, transparent);
+	background: color-mix(in srgb, var(--V) 55%, transparent);
+	color: var(--c);
+}
+
+.koka-toolbtn .koka-ico {
+	width: 17px;
+	height: 17px;
+}
+
+.koka-toolbtn.accent {
+	border-color: transparent;
+	background: linear-gradient(135deg, var(--a), #a78bfa);
+	color: #0b1220;
+	box-shadow: 0 8px 20px color-mix(in srgb, var(--a) 30%, transparent);
+}
+
+.koka-toolbtn:hover {
+	filter: brightness(1.06);
+}
+
+/* ==== Настройка кнопок «Быстрые действия» ==== */
+.koka-actions-edit {
+	margin-inline-start: auto;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	border-radius: 8px;
+	border: 1px solid color-mix(in srgb, var(--S) 55%, transparent);
+	background: transparent;
+	color: var(--c);
+	cursor: pointer;
+	font-size: .95rem;
+	line-height: 1;
+}
+
+.koka-actions-edit:hover {
+	color: var(--a);
+	border-color: color-mix(in srgb, var(--a) 50%, transparent);
+}
+
+.koka-ae {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	max-height: 52vh;
+	overflow: auto;
+}
+
+.koka-ae-row {
+	display: grid;
+	grid-template-columns: minmax(90px, 1fr) minmax(140px, 2fr) 130px auto;
+	gap: 8px;
+	align-items: center;
+}
+
+.koka-ae-row input,
+.koka-ae-row select {
+	min-height: 34px;
+}
+
 /* ==== Иконка Wi-Fi (для карточки быстрых настроек) ==== */
 .koka-ico-wifi {
 	-webkit-mask-image: var(--kd-wifi);
