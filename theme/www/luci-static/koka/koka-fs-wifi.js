@@ -113,35 +113,81 @@
 		});
 	}
 
-	function parseConnections(text) {
+	function parseInstances(text) {
 		var list = [];
 		var cur = null;
 
 		(text || '').split('\n').forEach(function (line) {
-			var sec = line.match(/^config\s+connection(?:\s+'([^']*)')?\s*$/);
-			var opt = line.match(/^\s*option\s+(\w+)\s+(?:'([^']*)'|"([^"]*)"|(\S+))\s*$/);
+			var sec = line.match(/^config\s+instance(?:\s+'([^']*)')?\s*$/);
+			var opt = line.match(/^\s*(?:option|list)\s+(\w+)\s+(?:'([^']*)'(?:\s+'([^']*)')*|"([^"]*)"|(\S+))\s*$/);
 
 			if (sec) {
-				cur = { _id: sec[1] || ('cfg' + list.length) };
+				cur = { _id: sec[1] || ('instance' + list.length), _hosts: [] };
 				list.push(cur);
 				return;
 			}
 
-			if (opt && cur)
-				cur[opt[1]] = opt[2] != null ? opt[2] : (opt[3] != null ? opt[3] : opt[4]);
+			if (!opt || !cur)
+				return;
+
+			if (opt[1] === 'hosts') {
+				var hosts = line.match(/'([^']+)'/g) || [];
+
+				cur._hosts = cur._hosts.concat(hosts.map(function (h) {
+					return h.replace(/'/g, '');
+				}));
+			}
+			else if (opt[1] === 'urls') {
+				var urls = line.match(/'([^']+)'/g) || [];
+
+				cur._hosts = cur._hosts.concat(urls.map(function (u) {
+					return u.replace(/'/g, '');
+				}));
+			}
+			else {
+				cur[opt[1]] = opt[2] != null ? opt[2] : (opt[3] != null ? opt[3] : (opt[4] != null ? opt[4] : opt[5]));
+			}
 		});
 
-		return list.filter(function (c) {
-			return c.enabled !== '0' && c.name;
-		});
+		return list.filter(function (i) { return i.enabled !== '0'; });
 	}
 
-	function connections() {
-		return need('fs').then(function (fs) {
-			return fs.read('/etc/config/internet-detector-ui');
-		}).then(parseConnections).catch(function () {
-			return [];
-		});
+	function detectorInstances() {
+		return Promise.all([
+			need('fs').then(function (fs) { return fs.read('/etc/config/internet-detector'); }),
+			need('rpc').then(function (rpc) {
+				var call = rpc.declare({ object: 'luci.internet-detector', method: 'InetStatus', expect: { '': {} } });
+				return call().catch(function () { return { instances: [] }; });
+			})
+		]).then(function (res) {
+			var cfg = parseInstances(res[0]);
+			var status = {};
+
+			((res[1] && res[1].instances) || []).forEach(function (i) {
+				status[i.instance] = i.inet;
+			});
+
+			cfg.forEach(function (inst) { inst._inet = status[inst._id]; });
+
+			return cfg.length ? cfg : Object.keys(status).map(function (name) {
+				return { _id: name, name: name, _inet: status[name], _hosts: [] };
+			});
+		}).catch(function () { return []; });
+	}
+
+	function typeOf(inst) {
+		var text = (inst.type || '') + ' ' + (inst.description || '') + ' ' + inst._id;
+
+		if (inst.type && /^(internet|vpn|dns|wifi)$/.test(inst.type))
+			return inst.type;
+		if (/vpn|впн|wireguard|amnezia|zerotier/i.test(text))
+			return 'vpn';
+		if (/dns/i.test(text))
+			return 'dns';
+		if (/wifi|wi-fi|вайфай/i.test(text))
+			return 'wifi';
+
+		return 'internet';
 	}
 
 	function linkStates() {
@@ -151,59 +197,55 @@
 	}
 
 	function refreshInternet(box) {
-		Promise.all([ connections(), linkStates() ]).then(function (res) {
+		Promise.all([ detectorInstances(), linkStates() ]).then(function (res) {
 			var list = res[0];
 			var links = res[1];
+			var icons = { internet: 'koka-ico-net', vpn: 'koka-ico-shield', dns: 'koka-ico-dns', wifi: 'koka-ico-link' };
 
 			if (!list.length) {
-				box.textContent = 'Соединения не заданы (Службы → Internet Detector → Соединения)';
+				box.textContent = 'Экземпляры не заданы (Службы → Internet Detector → Экземпляры)';
 				return;
 			}
 
-			return Promise.all(list.map(function (c) {
-				var type = c.type || 'internet';
-				var row = { c: c, type: type, pills: [], note: '' };
+			return Promise.all(list.map(function (inst) {
+				var type = typeOf(inst);
+				var name = inst.description || inst.name || inst._id;
+				var host = (inst._hosts && inst._hosts[0]) || '1.1.1.1';
+				var ping = type === 'internet' ? pingLatency(host) : Promise.resolve(null);
 
-				if (type === 'internet') {
-					return pingLatency(c.host || '1.1.1.1').then(function (ping) {
-						row.pills = [ netPill(ping.ok ? 'есть' : 'нет', ping.ok ? 'good' : 'bad') ];
-						row.note = (c.host || '1.1.1.1') + (ping.ms != null ? ' · ' + Math.round(ping.ms) + ' мс' : '');
-						return row;
-					});
-				}
+				return ping.then(function (r) {
+					var pill;
+					var note = '';
 
-				if (type === 'vpn') {
-					var up = c.iface
-						? new RegExp(':\\s+' + c.iface + ':.*\\bUP\\b').test(links)
-						: /\bUP\b/.test(links);
+					if (type === 'vpn') {
+						var iface = inst.iface || inst._id;
+						var up = new RegExp(':\\s+' + iface + ':.*\\bUP\\b').test(links);
 
-					row.pills = [ netPill(up ? 'поднят' : 'лежит', up ? 'good' : 'bad') ];
-					row.note = c.iface || '';
-					return Promise.resolve(row);
-				}
+						pill = netPill(up ? 'поднят' : 'лежит', up ? 'good' : 'bad');
+						note = iface;
+					}
+					else if (r) {
+						pill = netPill(r.ok ? 'есть' : 'нет', r.ok ? 'good' : 'bad');
+						note = host + (r.ms != null ? ' · ' + Math.round(r.ms) + ' мс' : '');
+					}
+					else {
+						var online = inst._inet == 0;
 
-				if (type === 'dns') {
-					return pingLatency('127.0.0.1').then(function (r) {
-						row.pills = [ netPill(r.ok ? 'работает' : 'нет', r.ok ? 'good' : 'bad') ];
-						return row;
-					});
-				}
+						pill = netPill(online ? 'онлайн' : 'офлайн', online ? 'good' : 'bad');
+					}
 
-				row.pills = [ netPill('Wi-Fi', 'good') ];
-				return Promise.resolve(row);
-			})).then(function (rows) {
-				var icon = { internet: 'koka-ico-net', vpn: 'koka-ico-shield', dns: 'koka-ico-dns', wifi: 'koka-ico-link' };
+					if (!note && inst.interval_up)
+						note = 'каждые ' + inst.interval_up + ' с';
 
-				box.replaceChildren.apply(box, rows.map(function (r) {
 					return E('div', { class: 'koka-det' }, [
-						E('div', { class: 'koka-det-main' }, [
-							E('span', { class: 'koka-ico ' + (icon[r.type] || 'koka-ico-net') }),
-							E('span', { class: 'koka-det-name' }, r.c.name),
-							r.pills.length ? r.pills : ''
-						]),
-						r.note ? E('div', { class: 'koka-det-params' }, r.note) : ''
+						E('div', { class: 'koka-det-main' },
+							[ E('span', { class: 'koka-ico ' + (icons[type] || 'koka-ico-net') }),
+							  E('span', { class: 'koka-det-name' }, name) ].concat(pill ? [ pill ] : [])),
+						note ? E('div', { class: 'koka-det-params' }, note) : ''
 					]);
-				}));
+				});
+			})).then(function (rows) {
+				box.replaceChildren.apply(box, rows);
 			});
 		});
 	}
