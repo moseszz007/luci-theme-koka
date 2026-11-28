@@ -143,11 +143,34 @@ html:not([data-palette])[data-darkmode="false"] body {
 	backdrop-filter: blur(18px) saturate(1.2);
 }
 
+/* Стекло шапки живёт на псевдоэлементе, а не на самом .fs-sidebar.
+ * Причина: элемент с backdrop-filter становится «backdrop root» для своих
+ * потомков, и выпадающие меню внутри шапки теряли блюр (фильтру просто
+ * нечего было размывать). Псевдослой — сосед меню, а не предок, поэтому
+ * работают оба стекла: и шапка, и меню. */
+.koka-glass .fs-sidebar,
+.koka-glass .fs-bar,
+.koka-glass header.fs-bar {
+	background: transparent !important;
+	position: relative;
+}
+
+.koka-glass .fs-sidebar::before,
+.koka-glass .fs-bar::before,
+.koka-glass header.fs-bar::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	background: color-mix(in srgb, var(--an) 62%, transparent);
+	border-radius: inherit;
+	pointer-events: none;
+	-webkit-backdrop-filter: blur(18px) saturate(1.2);
+	backdrop-filter: blur(18px) saturate(1.2);
+}
+
 .koka-glass .fs-sidebar {
-	background: color-mix(in srgb, var(--an) 62%, transparent) !important;
 	border-color: rgba(255, 255, 255, .08) !important;
-	-webkit-backdrop-filter: blur(20px) saturate(1.2);
-	backdrop-filter: blur(20px) saturate(1.2);
 }
 
 /* Popups: настоящий блюр на самом элементе. Ключевой момент — такие
@@ -200,8 +223,16 @@ html:not([data-palette])[data-darkmode="false"] body {
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
 	.koka-glass #view .cbi-section,
-	.koka-glass .fs-sidebar {
+	.koka-glass .fs-sidebar,
+	.koka-glass .fs-bar,
+	.koka-glass header.fs-bar {
 		background: var(--an) !important;
+	}
+
+	.koka-glass .fs-sidebar::before,
+	.koka-glass .fs-bar::before,
+	.koka-glass header.fs-bar::before {
+		content: none;
 	}
 }
 
@@ -229,15 +260,10 @@ header.fs-bar {
 	box-shadow: 0 6px 24px rgba(2, 8, 23, .14) !important;
 }
 
-/* Шапка — стекло: полупрозрачный фон + blur. Элемент не анимируется,
- * поэтому фильтр не «прыгает»; на телефоне сила блюра меньше (см. ниже). */
 .koka-glass .fs-bar,
 .koka-glass header.fs-bar {
-	background: color-mix(in srgb, var(--an) 62%, transparent) !important;
 	border-bottom: 1px solid rgba(255, 255, 255, .10) !important;
 	box-shadow: 0 8px 30px rgba(2, 8, 23, .18) !important;
-	-webkit-backdrop-filter: blur(18px) saturate(1.2);
-	backdrop-filter: blur(18px) saturate(1.2);
 }
 
 @media (max-width: 767px) {
@@ -828,17 +854,18 @@ textarea:invalid:focus {
 		backdrop-filter: none !important;
 	}
 
-	/* В верхней раскладке шапка — это .fs-sidebar. В боковой раскладке
-	 * (планшет) .fs-sidebar — высокая колонка, её не блюрим. */
-	.koka-glass[data-layout="top"] .fs-sidebar,
-	.koka-glass[data-narrow] .fs-sidebar {
-		background: color-mix(in srgb, var(--an) 76%, transparent) !important;
+	/* В верхней раскладке шапка — это .fs-sidebar; в боковой (планшет) —
+	 * высокая колонка, её не блюрим. Блюр шапки — только на псевдослое,
+	 * иначе меню внутри неё снова останутся без блюра. */
+	.koka-glass[data-layout="top"] .fs-sidebar::before,
+	.koka-glass[data-narrow] .fs-sidebar::before,
+	.koka-glass .fs-bar::before,
+	.koka-glass header.fs-bar::before {
+		background: color-mix(in srgb, var(--an) 76%, transparent);
+		-webkit-backdrop-filter: blur(10px) saturate(1.15) !important;
+		backdrop-filter: blur(10px) saturate(1.15) !important;
 	}
 
-	.koka-glass[data-layout="top"] .fs-sidebar,
-	.koka-glass[data-narrow] .fs-sidebar,
-	.koka-glass .fs-bar,
-	.koka-glass header.fs-bar,
 	.koka-glass .modal,
 	.koka-glass .fs-search-box {
 		-webkit-backdrop-filter: blur(10px) saturate(1.15) !important;
@@ -865,7 +892,11 @@ textarea:invalid:focus {
 		background: color-mix(in srgb, var(--an) 76%, transparent) !important;
 	}
 
-	.koka-glass .fs-sidebar {
+	.koka-glass:not([data-layout="top"]):not([data-narrow]) .fs-sidebar {
 		background: var(--an) !important;
+	}
+
+	.koka-glass:not([data-layout="top"]):not([data-narrow]) .fs-sidebar::before {
+		content: none;
 	}
 }
