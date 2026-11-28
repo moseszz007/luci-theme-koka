@@ -102,19 +102,28 @@ return baseclass.extend({
 			btn.disabled = true;
 			btn.textContent = 'Запускаю…';
 			reload.hidden = true;
-			log('Запускаю обновление в фоне…');
+			log('Запускаю обновление…');
+
+			/* Поллим лог сразу и независимо от ответа RPC: если rpcd в этот
+			 * момент перезапускается, запрос может зависнуть, а обновление
+			 * при этом уже идёт. Лог — единственный источник правды. */
+			started = Date.now();
+			timer = window.setTimeout(poll, 700);
 
 			fs.exec(INIT, [ 'restart' ]).then(function (res) {
 				if (res.code !== 0)
 					throw new Error(((res.stderr || res.stdout) || 'скрипт не запустился').trim());
 
 				btn.textContent = 'Обновляю…';
-				started = Date.now();
-				timer = window.setTimeout(poll, 600);
 			}).catch(function (err) {
-				stop();
-				log(String((err && err.message) || err));
-				notify('Не удалось запустить обновление', 'error');
+				var msg = String((err && err.message) || err);
+
+				/* Таймаут RPC при уже запущенном обновлении — не ошибка */
+				if (!/timed out/i.test(msg)) {
+					log(msg);
+					notify('Не удалось запустить обновление', 'error');
+					stop();
+				}
 			});
 		});
 
