@@ -246,7 +246,6 @@
 				});
 			})).then(function (rows) {
 				box.replaceChildren.apply(box, rows);
-				wifiKeys().then(function (keys) { decorateWifiKeys(box, keys); });
 			});
 		});
 	}
@@ -992,6 +991,7 @@
 				]));
 
 				box.replaceChildren.apply(box, rows);
+				wifiKeys().then(function (keys) { decorateWifiKeys(box, keys); });
 			});
 		}
 
