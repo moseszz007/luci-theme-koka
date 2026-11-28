@@ -852,11 +852,13 @@ textarea:invalid:focus {
 	align-items: center;
 	gap: 8px;
 	margin-inline-start: auto;
+	flex: 0 0 auto;
 }
 
 .koka-toolbtn {
 	width: 34px;
 	height: 34px;
+	min-width: 34px;
 	padding: 0 !important;
 	display: inline-flex;
 	align-items: center;
@@ -864,23 +866,26 @@ textarea:invalid:focus {
 	border-radius: 10px;
 	border: 1px solid color-mix(in srgb, var(--S) 60%, transparent);
 	background: color-mix(in srgb, var(--V) 55%, transparent);
-	color: var(--c);
+	color: var(--c) !important;
+	box-shadow: none;
 }
 
 .koka-toolbtn .koka-ico {
 	width: 17px;
 	height: 17px;
+	flex: 0 0 auto;
+	background: currentColor !important;
 }
 
 .koka-toolbtn.accent {
 	border-color: transparent;
-	background: linear-gradient(135deg, var(--a), #a78bfa);
-	color: #0b1220;
+	background: linear-gradient(135deg, var(--a), #a78bfa) !important;
+	color: #0b1220 !important;
 	box-shadow: 0 8px 20px color-mix(in srgb, var(--a) 30%, transparent);
 }
 
 .koka-toolbtn:hover {
-	filter: brightness(1.06);
+	filter: brightness(1.08);
 }
 
 /* ==== Настройка кнопок «Быстрые действия» ==== */
