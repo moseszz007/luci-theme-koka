@@ -45,6 +45,9 @@
 				],
 				"/usr/share/koka/update-theme.sh": [
 					"exec"
+				],
+				"/etc/init.d/koka-update": [
+					"exec"
 				]
 			}
 		}

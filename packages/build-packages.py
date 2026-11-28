@@ -87,7 +87,7 @@ def collect_files(version=''):
         data = path.read_bytes().replace(b'\r\n', b'\n')
         if version:
             data = data.replace(b'__KOKA_VERSION__', version.encode())
-        mode = 0o755 if (rel.startswith(('www/cgi-bin/', 'etc/uci-defaults/'))
+        mode = 0o755 if (rel.startswith(('www/cgi-bin/', 'etc/uci-defaults/', 'etc/init.d/'))
                          or rel.endswith('.sh')) else 0o644
         files.append((rel, data, mode))
 

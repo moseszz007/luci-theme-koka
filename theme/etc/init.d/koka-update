@@ -1,0 +1,19 @@
+#!/bin/sh /etc/rc.common
+# Одноразовый запуск обновления темы Koka под управлением procd.
+# Нужен потому, что rpcd file exec ждёт завершения всех потомков команды,
+# а обновление (GitHub + apk) идёт дольше таймаута браузера. procd забирает
+# процесс себе и отдаёт управление сразу; прогресс пишется в лог.
+
+START=99
+STOP=99
+USE_PROCD=1
+
+LOG="/tmp/koka-update.log"
+
+start_service() {
+	procd_open_instance
+	procd_set_param command /bin/sh -c "exec /usr/share/koka/update-theme.sh __run >>$LOG 2>&1"
+	procd_set_param stdout 0
+	procd_set_param stderr 0
+	procd_close_instance
+}

@@ -6,11 +6,13 @@
 
 /* Кнопка «Обновить с GitHub» на странице настроек темы.
  *
- * Обновление идёт в фоне (/usr/share/koka/update-theme.sh --background),
- * а панель читает /tmp/koka-update.log. Так RPC не висит 30+ секунд и
- * не падает с «XHR request timed out», даже если GitHub отвечает медленно. */
+ * Обновление запускается как one-shot сервис procd (/etc/init.d/koka-update):
+ * rpcd file exec ждёт завершения ВСЕХ потомков команды, поэтому обычный
+ * запуск в фоне всё равно упирался в «XHR request timed out». procd же
+ * забирает процесс себе и отвечает сразу.
+ * Прогресс пишется в /tmp/koka-update.log, панель его читает и показывает. */
 
-const SCRIPT = '/usr/share/koka/update-theme.sh';
+const INIT = '/etc/init.d/koka-update';
 const LOG = '/tmp/koka-update.log';
 const DONE = '__KOKA_DONE__';
 const POLL_MS = 900;
@@ -102,7 +104,7 @@ return baseclass.extend({
 			reload.hidden = true;
 			log('Запускаю обновление в фоне…');
 
-			fs.exec(SCRIPT, [ '--background' ]).then(function (res) {
+			fs.exec(INIT, [ 'restart' ]).then(function (res) {
 				if (res.code !== 0)
 					throw new Error(((res.stderr || res.stdout) || 'скрипт не запустился').trim());
 
