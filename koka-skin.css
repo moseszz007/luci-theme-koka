@@ -846,6 +846,25 @@ textarea:invalid:focus {
 	--koka-bg-op: 1;
 }
 
+/* ==== Иконка RJ-45 для карточки «Порты» ==== */
+.koka-ico-rj45 {
+	-webkit-mask-image: var(--kd-rj45);
+	mask-image: var(--kd-rj45);
+	width: 18px;
+	height: 18px;
+	flex: 0 0 auto;
+	opacity: .85;
+}
+
+.koka-ico-rj45.wan {
+	color: var(--a, #7aa2ff);
+	opacity: 1;
+}
+
+:root {
+	--kd-rj45: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 3h6v3.5H9z'/%3E%3Cpath d='M6 6.5h12v10a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4v-10Z'/%3E%3Cpath d='M9.6 10.5v3.5M12 10.5v3.5M14.4 10.5v3.5'/%3E%3C/svg%3E");
+}
+
 /* ==== Индикаторы детектора на дашборде ==== */
 .koka-net-extra {
 	margin-top: 10px;

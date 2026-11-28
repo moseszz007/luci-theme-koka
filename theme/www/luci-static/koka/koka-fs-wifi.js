@@ -250,6 +250,93 @@
 		});
 	}
 
+	function portsCard() {
+		var cards = [].slice.call(document.querySelectorAll('.koka-card'));
+
+		for (var i = 0; i < cards.length; i++) {
+			var title = cards[i].querySelector('.koka-card-title');
+
+			if (title && title.textContent.trim() === 'Порты')
+				return cards[i];
+		}
+
+		return null;
+	}
+
+	function portLabels() {
+		return Promise.all([
+			run(UBUS, [ 'call', 'network.interface', 'dump' ]),
+			run(UBUS, [ 'call', 'network.device', 'status', '{"name":"br-lan"}' ])
+		]).then(function (res) {
+			var map = {};
+			var dump;
+
+			try {
+				dump = JSON.parse(res[0].stdout || '{}');
+			}
+			catch (e) {
+				dump = {};
+			}
+
+			((dump.interface) || []).forEach(function (i) {
+				var dev = i.l3_device || i.device;
+
+				if (!dev)
+					return;
+
+				map[dev] = { label: i.interface === 'lan' ? 'br-lan' : i.interface, role: (i.interface === 'wan' || /^wan/.test(i.interface)) ? 'WAN' : 'LAN' };
+			});
+
+			try {
+				var br = JSON.parse(res[1].stdout || '{}');
+
+				((br['bridge-members']) || []).forEach(function (m) {
+					map[m] = { label: 'br-lan', role: 'LAN' };
+				});
+			}
+			catch (e) {}
+
+			return map;
+		}).catch(function () { return {}; });
+	}
+
+	function decoratePorts() {
+		var card = portsCard();
+
+		if (!card || card.__kokaPorts)
+			return false;
+
+		card.__kokaPorts = true;
+
+		function apply() {
+			portLabels().then(function (map) {
+				[].slice.call(card.querySelectorAll('.koka-port')).forEach(function (row) {
+					var nameEl = row.querySelector('.koka-port-name');
+
+					if (!nameEl || row.querySelector('.koka-ico-rj45'))
+						return;
+
+					var dev = nameEl.textContent.trim();
+					var info = map[dev] || { label: dev, role: /^wan/.test(dev) ? 'WAN' : '' };
+
+					nameEl.textContent = info.label;
+
+					var ico = E('span', { class: 'koka-ico koka-ico-rj45' + (info.label === 'wan' ? ' wan' : ''), title: dev });
+					row.insertBefore(ico, nameEl);
+
+					if (info.role && !row.querySelector('.koka-role'))
+						row.insertBefore(E('span', { class: 'koka-role' }, info.role), nameEl.nextSibling);
+				});
+			});
+		}
+
+		apply();
+
+		new MutationObserver(apply).observe(card, { childList: true, subtree: true });
+
+		return true;
+	}
+
 	function cleanPills(card) {
 		/* Пилюли детектора вида «internet: Онлайн» больше не нужны: их
 		 * заменяет наш блок с иконками и параметрами. */
@@ -379,8 +466,9 @@
 		var timer = window.setInterval(function () {
 			var attached = attach();
 			var injected = injectInternet();
+			var ports = decoratePorts();
 
-			if ((attached && injected) || ++tries > 60) {
+			if ((attached && injected && ports) || ++tries > 60) {
 				window.clearInterval(timer);
 				refresh();
 			}
