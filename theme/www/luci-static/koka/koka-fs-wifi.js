@@ -307,6 +307,12 @@
 			}
 			catch (e) {}
 
+			/* В мосту кроме физических портов висят Wi-Fi-интерфейсы
+			 * (phy0-ap0 и т.п.) — в карточке «Порты» они не нужны. */
+			members = members.filter(function (m) {
+				return !/^(phy|wlan|wl[0-9]|ra[0-9]|rai[0-9]|apcli)/i.test(m);
+			});
+
 			try {
 				var dump = JSON.parse(res[1].stdout || '{}');
 
