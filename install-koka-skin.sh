@@ -19,23 +19,22 @@ fi
 rm -f /www/luci-static/footstrap/koka-icon-bust.js
 rm -f /www/luci-static/resources/view/status/koka_[0-9]*.js
 
-# 2. Koka icon set; back up the stock icons once.
+# 2. Вернуть стоковые иконки LuCI, если старые версии темы их перезаписали.
+#    Свои иконки тема больше не копирует в luci-base: они лежат в
+#    /luci-static/koka/icons/ и подставляются на лету (koka-icon-bust.js),
+#    поэтому обновление luci-base их не затирает.
 ICONS=/www/luci-static/resources/icons
-mkdir -p "$ICONS"
-for icon in "$DIR"/icons/*.svg; do
-	[ -e "$icon" ] || continue
-	name=$(basename "$icon")
-	if [ -f "$ICONS/$name" ] && [ ! -f "$ICONS/$name.bak-koka" ]; then
-		cp "$ICONS/$name" "$ICONS/$name.bak-koka"
-	fi
-	cp "$icon" "$ICONS/$name"
+for bak in "$ICONS"/*.bak-koka; do
+	[ -e "$bak" ] || continue
+	cp "$bak" "${bak%.bak-koka}"
+	rm -f "$bak"
 done
 
-# 3. Protocol-aware icons in the network interface list.
+# 3. Снять старый патч списка интерфейсов, если он остался от прошлых версий.
 IFACE_JS=/www/luci-static/resources/view/network/interfaces.js
-if [ -f "$IFACE_JS" ] && [ -f "$DIR/koka-interfaces.js" ]; then
-	[ -f "$IFACE_JS.bak-koka" ] || cp "$IFACE_JS" "$IFACE_JS.bak-koka"
-	cp "$DIR/koka-interfaces.js" "$IFACE_JS"
+if [ -f "$IFACE_JS.bak-koka" ]; then
+	cp "$IFACE_JS.bak-koka" "$IFACE_JS"
+	rm -f "$IFACE_JS.bak-koka"
 fi
 
 # 4. Runtime directory for the appearance page uploads.
