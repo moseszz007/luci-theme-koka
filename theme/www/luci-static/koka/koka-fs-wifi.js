@@ -622,7 +622,7 @@
 	}
 
 	function setupHeroTools() {
-		var anchors = [].slice.call(document.querySelectorAll('a.koka-action'));
+		var anchors = [].slice.call(document.querySelectorAll('a.koka-action, button.koka-action'));
 		var pick = function (re) {
 			return anchors.filter(function (a) { return re.test(a.textContent.trim()); })[0];
 		};
