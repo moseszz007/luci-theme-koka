@@ -1,86 +1,130 @@
-{%
+{%-
 const boardinfo = ubus.call('system', 'board') ?? {};
+const rel = boardinfo.release ?? {};
+const host = striptags(boardinfo.hostname ?? 'OpenWrt');
+const desc = striptags(rel.description ?? 'OpenWrt');
 -%}
 
 {% include('header', { blank_page: true }) %}
 
-<form method="post" class="fs-login">
-<p class="fs-login-host">{{ entityencode(striptags(boardinfo.hostname ?? 'OpenWrt'), true) }}</p>
-{% if (fuser && !auth_plugin): %}
-		<div class="alert-message error">
-<p>{{ _('Invalid username and/or password! Please try again.') }}</p>
-</div>
-{% endif %}
-	{% if (auth_message): %}
-		<div class="alert-message{% if (auth_plugin): %} warning{% endif %}">
-<p>{{ entityencode(auth_message, true) }}</p>
-</div>
-{% endif %}
+<div class="koka-login">
+	<div class="koka-login-card">
 
-<div class="cbi-map">
-<h1 class="fs-sr">{{ _('Authorization Required') }}</h1>
-<div class="cbi-section"><div class="cbi-section-node">
-<div class="cbi-value">
-<label class="cbi-value-title" for="luci_username">{{ _('Username') }}</label>
-<div class="cbi-value-field">
-<input class="cbi-input-text" type="text" name="luci_username" id="luci_username" autocomplete="username" value="{{ entityencode(duser, true) }}" />
-</div>
-</div>
-<div class="cbi-value cbi-value-last">
-<label class="cbi-value-title" for="luci_password">{{ _('Password') }}</label>
-<div class="cbi-value-field">
-<input class="cbi-input-text" type="password" name="luci_password" id="luci_password" autocomplete="current-password" autofocus />
-</div>
-</div>
-{% if (auth_fields): %}
+		<div class="koka-login-head">
+			<span class="koka-login-logo" aria-hidden="true">
+				<svg viewBox="0 0 48 48" fill="none">
+					<defs>
+						<linearGradient id="kokaLoginBg" x1="0" y1="0" x2="1" y2="1">
+							<stop offset="0" stop-color="#7aa2ff"/>
+							<stop offset="1" stop-color="#a78bfa"/>
+						</linearGradient>
+					</defs>
+					<rect x="1" y="1" width="46" height="46" rx="13" fill="url(#kokaLoginBg)"/>
+					<path d="M16 12v24M32 12 19 24l13 12" stroke="#0b1220" stroke-width="3.4"
+					      stroke-linecap="round" stroke-linejoin="round" opacity=".92"/>
+				</svg>
+			</span>
+			<span class="koka-login-titles">
+				<span class="koka-login-host">{{ entityencode(host, true) }}</span>
+				<span class="koka-login-sub">{{ entityencode(desc, true) }}</span>
+			</span>
+		</div>
+
+		<h1 class="koka-login-title">{{ _('Authorization Required') }}</h1>
+
+		{% if (fuser && !auth_plugin): %}
+			<div class="alert-message error">
+				<p>{{ _('Invalid username and/or password! Please try again.') }}</p>
+			</div>
+		{% endif %}
+		{% if (auth_message): %}
+			<div class="alert-message{% if (auth_plugin): %} warning{% endif %}">
+				<p>{{ entityencode(auth_message, true) }}</p>
+			</div>
+		{% endif %}
+
+		<form method="post" class="fs-login">
+			<label class="koka-login-label" for="luci_username">{{ _('Username') }}</label>
+			<div class="koka-login-field">
+				<svg class="koka-login-ico" aria-hidden="true" viewBox="0 0 24 24">
+					<circle cx="12" cy="8.5" r="3.6"/>
+					<path d="M4.6 20c.7-3.5 3.7-5.6 7.4-5.6s6.7 2.1 7.4 5.6"/>
+				</svg>
+				<input class="cbi-input-text" type="text" name="luci_username" id="luci_username"
+				       autocomplete="username" autocapitalize="off" spellcheck="false"
+				       value="{{ entityencode(duser, true) }}" />
+			</div>
+
+			<label class="koka-login-label" for="luci_password">{{ _('Password') }}</label>
+			<div class="koka-login-field">
+				<svg class="koka-login-ico" aria-hidden="true" viewBox="0 0 24 24">
+					<rect x="4" y="10.5" width="16" height="9.5" rx="2.4"/>
+					<path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/>
+				</svg>
+				<input class="cbi-input-text" type="password" name="luci_password" id="luci_password"
+				       autocomplete="current-password" />
+				<button type="button" class="koka-login-eye" id="koka-eye"
+				        aria-label="{{ _('Show password') }}" title="{{ _('Show password') }}">
+					<svg aria-hidden="true" viewBox="0 0 24 24">
+						<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/>
+						<circle cx="12" cy="12" r="3.2"/>
+					</svg>
+				</button>
+			</div>
+
+			{% if (auth_fields): %}
 				{% for (let field in auth_fields): %}
-					<div class="cbi-value">
-<label class="cbi-value-title" for="{{ entityencode(field.name, true) }}">{{ _(field.label ?? field.name) }}</label>
-<div class="cbi-value-field">
-<input class="cbi-input-text"
-type="{{ entityencode(field.type ?? 'text', true) }}"
-name="{{ entityencode(field.name, true) }}"
-id="{{ entityencode(field.name, true) }}"
-{% if (field.placeholder): %} placeholder="{{ entityencode(field.placeholder, true) }}"{% endif %}
-								{% if (field.inputmode): %} inputmode="{{ entityencode(field.inputmode, true) }}"{% endif %}
-								{% if (field.pattern): %} pattern="{{ entityencode(field.pattern, true) }}"{% endif %}
-								{% if (field.maxlength): %} maxlength="{{ entityencode(`${field.maxlength}`, true) }}"{% endif %}
-								{% if (field.autocomplete): %} autocomplete="{{ entityencode(field.autocomplete, true) }}"{% endif %}
-								{% if (field.required): %} required{% endif %}
-							/>
-</div>
-</div>
-{% endfor %}
+					<label class="koka-login-label" for="{{ entityencode(field.name, true) }}">{{ _(field.label ?? field.name) }}</label>
+					<div class="koka-login-field">
+						<input class="cbi-input-text"
+						       type="{{ entityencode(field.type ?? 'text', true) }}"
+						       name="{{ entityencode(field.name, true) }}"
+						       id="{{ entityencode(field.name, true) }}"
+						       {% if (field.placeholder): %} placeholder="{{ entityencode(field.placeholder, true) }}"{% endif %}
+						       {% if (field.inputmode): %} inputmode="{{ entityencode(field.inputmode, true) }}"{% endif %}
+						       {% if (field.pattern): %} pattern="{{ entityencode(field.pattern, true) }}"{% endif %}
+						       {% if (field.maxlength): %} maxlength="{{ entityencode(`${field.maxlength}`, true) }}"{% endif %}
+						       {% if (field.autocomplete): %} autocomplete="{{ entityencode(field.autocomplete, true) }}"{% endif %}
+						       {% if (field.required): %} required{% endif %} />
+					</div>
+				{% endfor %}
 			{% endif %}
+
 			{% if (auth_html): %}
-				<div class="cbi-value">
-{{ auth_html }}
-</div>
-{% endif %}
+				<div class="koka-login-authhtml">{{ auth_html }}</div>
+			{% endif %}
+
 			{% if (auth_assets): %}
 				{% for (let asset in auth_assets): %}
 					{% if (asset.type == 'script'): %}
 						<script src="{{ asset.src }}"></script>
-{% endif %}
+					{% endif %}
 				{% endfor %}
 			{% endif %}
-		</div></div>
+
+			<button type="submit" class="btn cbi-button cbi-button-apply koka-login-submit">{{ _('Log in') }}</button>
+		</form>
+
+		<div class="koka-login-foot">
+			<span class="koka-login-badge">Koka</span>
+			<span class="koka-login-footsep" aria-hidden="true">·</span>
+			<span>{{ _('LuCI') }}</span>
+		</div>
+	</div>
 </div>
-<div class="cbi-page-actions">
-<input type="submit" value="{{ _('Log in') }}" class="btn cbi-button cbi-button-apply" />
-</div>
-</form>
+
 {%
 let https_ports = uci.get('uhttpd', 'main', 'listen_https') ?? [];
 https_ports = uniq(filter(
-map(
-(type(https_ports) == 'string') ? split(https_ports, /\s+/) : https_ports,
-e => +match(e, /\d+$/)?.[0]
-),
-p => (p >= 0 && p <= 65535)
+	map(
+		(type(https_ports) == 'string') ? split(https_ports, /\s+/) : https_ports,
+		e => +match(e, /\d+$/)?.[0]
+	),
+	p => (p >= 0 && p <= 65535)
 ));
 %}
 
 <script>window.__fsHttps={ports:{{ https_ports }},resource:"{{ resource }}"};</script>
 <script>(()=>{var o;if("https:"===document.location.protocol)(o=document.referrer?new URL(document.referrer):null)&&"http:"===o.protocol&&o.hostname===window.location.hostname&&window.location.replace(window.location.href);else{let{hostname:e,pathname:r}=window.location;(window.__fsHttps.ports||[]).forEach(o=>{const t=`https://${e}:`+o+r,n=new Image;n.onload=()=>{window.location=t},n.src=`https://${e}:${o}${window.__fsHttps.resource}/icons/loading.svg?`+Math.random(),setTimeout(()=>{n.src=""},5e3)})}})();</script>
+<script>(()=>{const u=document.getElementById('luci_username'),p=document.getElementById('luci_password'),e=document.getElementById('koka-eye');if(e&&p)e.addEventListener('click',()=>{const s=p.type==='password';p.type=s?'text':'password';e.classList.toggle('on',s);p.focus()});if(p&&u)(u.value?p:u).focus()})();</script>
 {% include('footer', { blank_page: true }) %}

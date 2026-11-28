@@ -846,6 +846,221 @@ textarea:invalid:focus {
 	--koka-bg-op: 1;
 }
 
+/* ==== Страница входа (sysauth) ====
+ * Карточка в стеклянном стиле темы: логотип, хост, поля с иконками,
+ * кнопка на всю ширину. Блюр — на самой карточке, анимация только transform,
+ * чтобы фильтр не «включался отдельным слоем». */
+.koka-login {
+	min-height: 100svh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 28px 16px 40px;
+}
+
+.koka-login-card {
+	width: min(420px, 100%);
+	padding: 26px 26px 20px;
+	border-radius: 20px;
+	background: color-mix(in srgb, var(--an) 80%, transparent);
+	border: 1px solid color-mix(in srgb, var(--S) 65%, transparent);
+	box-shadow:
+		0 30px 80px rgba(2, 8, 23, .42),
+		inset 0 1px 0 rgba(255, 255, 255, .07);
+	-webkit-backdrop-filter: blur(20px) saturate(1.15);
+	backdrop-filter: blur(20px) saturate(1.15);
+	animation: koka-login-in .28s ease-out both;
+}
+
+@keyframes koka-login-in {
+	from { transform: translateY(10px) scale(.985); }
+	to   { transform: none; }
+}
+
+.koka-login-head {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	margin-bottom: 18px;
+}
+
+.koka-login-logo {
+	width: 46px;
+	height: 46px;
+	flex: 0 0 auto;
+	display: block;
+	filter: drop-shadow(0 8px 18px color-mix(in srgb, var(--a) 35%, transparent));
+}
+
+.koka-login-logo svg {
+	width: 100%;
+	height: 100%;
+	display: block;
+}
+
+.koka-login-titles {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.koka-login-host {
+	font-size: 1.18rem;
+	font-weight: 700;
+	letter-spacing: -.01em;
+	overflow-wrap: anywhere;
+	line-height: 1.25;
+}
+
+.koka-login-sub {
+	font-size: .8rem;
+	color: var(--fs-faint, #94a3b8);
+	overflow-wrap: anywhere;
+	line-height: 1.3;
+}
+
+.koka-login-title {
+	margin: 0 0 14px;
+	font-size: .82rem;
+	font-weight: 600;
+	letter-spacing: .12em;
+	text-transform: uppercase;
+	color: var(--fs-dim, #64748b);
+}
+
+.koka-login .fs-login {
+	width: auto;
+	margin: 0;
+	padding: 0;
+	background: none;
+	border: 0;
+	box-shadow: none;
+}
+
+.koka-login .alert-message {
+	margin: 0 0 14px;
+}
+
+.koka-login-label {
+	display: block;
+	margin: 0 0 6px;
+	font-size: .78rem;
+	font-weight: 600;
+	letter-spacing: .04em;
+	color: var(--fs-dim, #64748b);
+}
+
+.koka-login-field {
+	position: relative;
+	margin-bottom: 14px;
+}
+
+.koka-login-ico {
+	position: absolute;
+	left: 14px;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 18px;
+	height: 18px;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.7;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	color: var(--fs-dim, #64748b);
+	pointer-events: none;
+}
+
+.koka-login-field input.cbi-input-text {
+	width: 100%;
+	min-height: 46px;
+	padding: 11px 44px;
+	font-size: 1rem;
+	border-radius: 12px;
+}
+
+.koka-login-eye {
+	position: absolute;
+	right: 6px;
+	top: 50%;
+	transform: translateY(-50%);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	padding: 0;
+	border: 0;
+	border-radius: 9px;
+	background: transparent;
+	color: var(--fs-dim, #64748b);
+	cursor: pointer;
+	opacity: .75;
+}
+
+.koka-login-eye svg {
+	width: 19px;
+	height: 19px;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.7;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.koka-login-eye:hover,
+.koka-login-eye.on {
+	opacity: 1;
+	color: var(--fs-accent, #4f46e5);
+}
+
+.koka-login-submit {
+	width: 100%;
+	min-height: 46px;
+	margin-top: 4px;
+	font-size: 1rem;
+	font-weight: 600;
+	border-radius: 12px;
+}
+
+.koka-login-authhtml {
+	margin-bottom: 14px;
+}
+
+.koka-login-foot {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	margin-top: 18px;
+	font-size: .78rem;
+	color: var(--fs-faint, #94a3b8);
+}
+
+.koka-login-badge {
+	padding: 2px 9px;
+	border-radius: 999px;
+	font-weight: 600;
+	color: var(--fs-accent, #4f46e5);
+	background: color-mix(in srgb, var(--fs-accent, #4f46e5) 14%, transparent);
+}
+
+.koka-login-footsep {
+	opacity: .5;
+}
+
+@media (max-width: 440px) {
+	.koka-login {
+		align-items: flex-start;
+		padding: 9vh 12px 28px;
+	}
+
+	.koka-login-card {
+		padding: 22px 18px 16px;
+		border-radius: 18px;
+	}
+}
+
 /* Лог обновления темы (Система -> Koka -> Обновление). */
 .fs-ap-out {
 	margin-top: 12px;
