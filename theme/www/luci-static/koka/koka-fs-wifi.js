@@ -868,8 +868,19 @@
 			E('div', { class: 'koka-card-body' }, [ box ])
 		]);
 
+		function isDash() {
+			return document.body.getAttribute('data-page') === 'admin-status-koka';
+		}
+
 		function host() {
-			return document.querySelector('.koka-dash') || document.querySelector('#view .cbi-map');
+			var dash = document.querySelector('.koka-dash');
+
+			if (dash)
+				return dash;
+
+			/* запасной вариант — только на самом дашборде: на других страницах
+			 * .cbi-map это обычная форма, туда карточку вставлять нельзя */
+			return isDash() ? document.querySelector('#view .cbi-map') : null;
 		}
 
 		function attach() {
@@ -1030,8 +1041,15 @@
 		 * постоянный наблюдатель: как только разметка сменилась — возвращаем
 		 * Wi-Fi, индикаторы детектора, порты и кнопки. */
 		function ensureAll() {
-			if (!host())
+			var h = host();
+
+			if (!h) {
+				/* ушли с дашборда — карточка не должна висеть на чужой странице */
+				if (card.parentNode)
+					card.parentNode.removeChild(card);
+
 				return false;
+			}
 
 			var hadWifi = !!document.querySelector('.koka-wifi-card');
 			var attached = attach();
