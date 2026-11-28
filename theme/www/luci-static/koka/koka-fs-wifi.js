@@ -851,10 +851,21 @@
 			var quick = quickCard();
 
 			if (!h.querySelector('.koka-wifi-card')) {
-				if (quick && quick.parentNode === h)
-					h.insertBefore(card, quick);
-				else
+				var parent = quick ? quick.parentNode : null;
+
+				if (parent) {
+					/* занимаем место «Быстрых действий» и берём их раскладку,
+					 * чтобы карточка вела себя как все остальные */
+					var span = (quick.className || '').match(/\bspan\d+\b/);
+
+					if (span && !card.classList.contains(span[0]))
+						card.classList.add(span[0]);
+
+					parent.insertBefore(card, quick);
+				}
+				else {
 					h.appendChild(card);
+				}
 			}
 
 			if (quick && quick.style.display !== 'none')
