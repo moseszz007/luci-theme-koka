@@ -76,6 +76,32 @@ download() {   # <url> <file>
 	return 1
 }
 
+ver_date() {
+	printf '%s' "$1" | sed 's/-r[0-9]*$//' | tr -d '.'
+}
+
+ver_rev() {
+	_r=$(printf '%s' "$1" | sed -n 's/.*-r\([0-9]*\)$/\1/p')
+	[ -n "$_r" ] || _r=0
+	printf '%s' "$_r"
+}
+
+# вернуть 0, если $1 новее $2 (формат YYYY.MM.DD-rN)
+ver_newer() {
+	_d1=$(ver_date "$1")
+	_d2=$(ver_date "$2")
+
+	case "$_d1$_d2" in
+		*[!0-9]*) return 1 ;;
+	esac
+
+	if [ "$_d1" -ne "$_d2" ]; then
+		[ "$_d1" -gt "$_d2" ]
+	else
+		[ "$(ver_rev "$1")" -gt "$(ver_rev "$2")" ]
+	fi
+}
+
 run_update() {
 	trap 'rmdir "$LOCK" 2>/dev/null' EXIT
 
@@ -103,6 +129,14 @@ run_update() {
 
 	if [ -n "$CUR" ] && [ "$CUR" = "$VER" ]; then
 		echo "Уже последняя версия — обновлять нечего."
+		echo "$DONE 0"
+		return 0
+	fi
+
+	# GitHub иногда отдаёт предыдущий релиз сразу после публикации —
+	# понижать тему из-за этого не будем
+	if [ -n "$CUR" ] && ver_newer "$CUR" "$VER"; then
+		echo "Установлено $CUR, в релизе $VER — понижение не делаю, обновление не нужно."
 		echo "$DONE 0"
 		return 0
 	fi
