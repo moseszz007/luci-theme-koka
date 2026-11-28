@@ -337,12 +337,12 @@
 		if (!card || card.__kokaPorts)
 			return false;
 
-		card.__kokaPorts = true;
-
 		var box = card.querySelector('.koka-ports');
 
 		if (!box)
 			return false;
+
+		card.__kokaPorts = true;
 
 		function apply() {
 			portsModel().then(function (ports) {
