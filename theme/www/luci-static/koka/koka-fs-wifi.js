@@ -104,8 +104,8 @@
 		return E('span', { class: 'koka-net-pill ' + (kind || '') }, text);
 	}
 
-	function pingLatency() {
-		return run(PING, [ '-c', '1', '-W', '2', '1.1.1.1' ]).then(function (res) {
+	function pingLatency(host) {
+		return run(PING, [ '-c', '1', '-W', '2', host ]).then(function (res) {
 			var out = (res.stdout || '') + (res.stderr || '');
 			var m = out.match(/time[=<]\s*([0-9.]+)\s*ms/i);
 
@@ -113,134 +113,98 @@
 		});
 	}
 
-	function inetStatus() {
-		return need('rpc').then(function (rpc) {
-			var call = rpc.declare({ object: 'luci.internet-detector', method: 'InetStatus', expect: { '': {} } });
+	function parseConnections(text) {
+		var list = [];
+		var cur = null;
 
-			return call().catch(function () { return { instances: [] }; });
-		});
-	}
+		(text || '').split('\n').forEach(function (line) {
+			var sec = line.match(/^config\s+connection(?:\s+'([^']*)')?\s*$/);
+			var opt = line.match(/^\s*option\s+(\w+)\s+(?:'([^']*)'|"([^"]*)"|(\S+))\s*$/);
 
-	function detectorConfig() {
-		return run(UCI, [ '-q', 'show', 'internet-detector' ]).then(function (res) {
-			var cfg = {};
-
-			(res.stdout || '').split('\n').forEach(function (line) {
-				var m = line.match(/^internet-detector\.([^.=]+)\.(hosts|urls|interval_up|check_type)='(.*)'$/);
-
-				if (m) {
-					cfg[m[1]] = cfg[m[1]] || {};
-					cfg[m[1]][m[2]] = m[3];
-				}
-			});
-
-			return cfg;
-		});
-	}
-
-	function vpnState() {
-		return Promise.all([
-			run(UCI, [ '-q', 'show', 'network' ]),
-			run(IP, [ '-o', 'link', 'show' ]),
-			run(ZT, [ '-j', 'info' ])
-		]).then(function (res) {
-			var uci = res[0].stdout || '';
-			var links = res[1].stdout || '';
-			var list = [];
-
-			uci.split('\n').forEach(function (line) {
-				var m = line.match(/^network\.([^.=]+)\.proto='(wireguard|amneziawg)'$/);
-
-				if (m && list.indexOf(m[1]) < 0)
-					list.push(m[1]);
-			});
-
-			var out = list.map(function (name) {
-				return {
-					name: name,
-					up: new RegExp(':\\s+' + name + ':.*\\bUP\\b').test(links)
-				};
-			});
-
-			if (res[2].code === 0) {
-				try {
-					var zt = JSON.parse(res[2].stdout || '{}');
-
-					out.push({ name: 'ZeroTier', up: !!zt.online });
-				}
-				catch (e) {}
+			if (sec) {
+				cur = { _id: sec[1] || ('cfg' + list.length) };
+				list.push(cur);
+				return;
 			}
 
-			return out;
+			if (opt && cur)
+				cur[opt[1]] = opt[2] != null ? opt[2] : (opt[3] != null ? opt[3] : opt[4]);
+		});
+
+		return list.filter(function (c) {
+			return c.enabled !== '0' && c.name;
+		});
+	}
+
+	function connections() {
+		return need('fs').then(function (fs) {
+			return fs.read('/etc/config/internet-detector-ui');
+		}).then(parseConnections).catch(function () {
+			return [];
+		});
+	}
+
+	function linkStates() {
+		return run(IP, [ '-o', 'link', 'show' ]).then(function (res) {
+			return res.stdout || '';
 		});
 	}
 
 	function refreshInternet(box) {
-		Promise.all([ pingLatency(), inetStatus(), detectorConfig(), vpnState() ]).then(function (res) {
-			var ping = res[0];
-			var instances = (res[1] && res[1].instances) || [];
-			var cfg = res[2];
-			var vpn = res[3];
-			var rows = [];
+		Promise.all([ connections(), linkStates() ]).then(function (res) {
+			var list = res[0];
+			var links = res[1];
 
-			function kindOf(inet) {
-				return inet == 0 ? 'good' : (inet == -1 ? 'warn' : 'bad');
+			if (!list.length) {
+				box.textContent = 'Соединения не заданы (Службы → Internet Detector → Соединения)';
+				return;
 			}
 
-			function textOf(inet) {
-				return inet == 0 ? 'Онлайн' : (inet == -1 ? 'Неизвестно' : 'Офлайн');
-			}
+			return Promise.all(list.map(function (c) {
+				var type = c.type || 'internet';
+				var row = { c: c, type: type, pills: [], note: '' };
 
-			if (instances.length) {
-				instances.forEach(function (inst) {
-					var c = cfg[inst.instance] || {};
-					var params = [];
+				if (type === 'internet') {
+					return pingLatency(c.host || '1.1.1.1').then(function (ping) {
+						row.pills = [ netPill(ping.ok ? 'есть' : 'нет', ping.ok ? 'good' : 'bad') ];
+						row.note = (c.host || '1.1.1.1') + (ping.ms != null ? ' · ' + Math.round(ping.ms) + ' мс' : '');
+						return row;
+					});
+				}
 
-					if (c.hosts)
-						params.push(c.hosts.replace(/'\s+'/g, ' · ').replace(/'/g, ''));
+				if (type === 'vpn') {
+					var up = c.iface
+						? new RegExp(':\\s+' + c.iface + ':.*\\bUP\\b').test(links)
+						: /\bUP\b/.test(links);
 
-					if (c.interval_up)
-						params.push('каждые ' + c.interval_up + ' с');
+					row.pills = [ netPill(up ? 'поднят' : 'лежит', up ? 'good' : 'bad') ];
+					row.note = c.iface || '';
+					return Promise.resolve(row);
+				}
 
-					rows.push(E('div', { class: 'koka-det' }, [
+				if (type === 'dns') {
+					return pingLatency('127.0.0.1').then(function (r) {
+						row.pills = [ netPill(r.ok ? 'работает' : 'нет', r.ok ? 'good' : 'bad') ];
+						return row;
+					});
+				}
+
+				row.pills = [ netPill('Wi-Fi', 'good') ];
+				return Promise.resolve(row);
+			})).then(function (rows) {
+				var icon = { internet: 'koka-ico-net', vpn: 'koka-ico-shield', dns: 'koka-ico-dns', wifi: 'koka-ico-link' };
+
+				box.replaceChildren.apply(box, rows.map(function (r) {
+					return E('div', { class: 'koka-det' }, [
 						E('div', { class: 'koka-det-main' }, [
-							E('span', { class: 'koka-ico koka-ico-net' }),
-							E('span', { class: 'koka-det-name' }, inst.instance),
-							netPill(textOf(inst.inet), kindOf(inst.inet)),
-							ping.ms != null
-								? E('span', { class: 'koka-det-ms' }, Math.round(ping.ms) + ' мс')
-								: ''
+							E('span', { class: 'koka-ico ' + (icon[r.type] || 'koka-ico-net') }),
+							E('span', { class: 'koka-det-name' }, r.c.name),
+							r.pills.length ? r.pills : ''
 						]),
-						params.length
-							? E('div', { class: 'koka-det-params' }, params.join(' · '))
-							: ''
-					]));
-				});
-			}
-			else {
-				rows.push(E('div', { class: 'koka-det' }, [
-					E('div', { class: 'koka-det-main' }, [
-						E('span', { class: 'koka-ico koka-ico-net' }),
-						E('span', { class: 'koka-det-name' }, 'Детектор'),
-						netPill(ping.ok ? 'есть' : 'нет', ping.ok ? 'good' : 'bad'),
-						ping.ms != null ? E('span', { class: 'koka-det-ms' }, Math.round(ping.ms) + ' мс') : ''
-					])
-				]));
-			}
-
-			if (vpn.length) {
-				rows.push(E('div', { class: 'koka-det' }, [
-					E('div', { class: 'koka-det-main' }, [
-						E('span', { class: 'koka-ico koka-ico-shield' }),
-						E('span', { class: 'koka-det-name' }, 'VPN'),
-						E('span', { class: 'koka-vpns' }, vpn.map(function (v) {
-							return E('span', { class: 'koka-vpn' + (v.up ? ' on' : ''), title: v.up ? 'поднят' : 'лежит' }, v.name);
-						}))
-					])
-				]));
-			}
-
-			box.replaceChildren.apply(box, rows);
+						r.note ? E('div', { class: 'koka-det-params' }, r.note) : ''
+					]);
+				}));
+			});
 		});
 	}
 

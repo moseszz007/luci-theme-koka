@@ -11,6 +11,9 @@
 			"file": {
 				"/tmp/koka-update.log": [
 					"read"
+				],
+				"/etc/config/internet-detector-ui": [
+					"read"
 				]
 			},
 			"uci": [
