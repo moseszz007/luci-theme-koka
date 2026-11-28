@@ -8,6 +8,11 @@
 					"stat"
 				]
 			},
+			"file": {
+				"/tmp/koka-update.log": [
+					"read"
+				]
+			},
 			"uci": [
 				"koka"
 			]

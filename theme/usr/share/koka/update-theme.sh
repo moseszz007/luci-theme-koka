@@ -1,14 +1,27 @@
 #!/bin/sh
 # Обновление темы Koka с GitHub Releases.
-# Запускается из LuCI: Система -> Koka -> Обновление,
-# или вручную: sh /usr/share/koka/update-theme.sh
+#
+# Использование:
+#   sh /usr/share/koka/update-theme.sh              — обновить сейчас (в консоли)
+#   sh /usr/share/koka/update-theme.sh --background — запустить в фоне и сразу
+#                                                     вернуть управление (так
+#                                                     делает кнопка в LuCI,
+#                                                     чтобы не упираться в
+#                                                     таймаут XHR)
+# Лог фонового запуска: /tmp/koka-update.log
+# В конце лог содержит маркер "__KOKA_DONE__ 0" (успех) или "__KOKA_DONE__ 1".
 
 REPO="moseszz007/luci-theme-koka"
 PKG="luci-theme-koka"
 API="https://api.github.com/repos/$REPO/releases/latest"
+LATEST="https://github.com/$REPO/releases/latest"
+LOG="/tmp/koka-update.log"
+LOCK="/tmp/koka-update.lock"
+DONE="__KOKA_DONE__"
 
 fail() {
-	echo "$1"
+	echo "ОШИБКА: $1"
+	echo "$DONE 1"
 	exit 1
 }
 
@@ -28,6 +41,26 @@ fetch() {   # <url> -> stdout
 	return 1
 }
 
+head_location() {   # редирект /releases/latest -> /releases/tag/vXXXX
+	if command -v curl >/dev/null 2>&1; then
+		curl -fsSI --connect-timeout 8 --max-time 20 -A "koka-update" "$LATEST" 2>/dev/null \
+			| tr -d '\r' | sed -n 's#^[Ll]ocation: .*/tag/v\{0,1\}\([^/[:space:]]*\).*#\1#p' | head -n 1
+		return 0
+	fi
+	if command -v wget >/dev/null 2>&1; then
+		wget -q -S --spider -T 20 "$LATEST" 2>&1 \
+			| tr -d '\r' | sed -n 's#^ *[Ll]ocation: .*/tag/v\{0,1\}\([^/[:space:]]*\).*#\1#p' | head -n 1
+		return 0
+	fi
+	return 1
+}
+
+latest_version() {
+	_v=$(fetch "$API" | tr ',' '\n' | grep '"tag_name"' | head -n 1 | cut -d '"' -f4)
+	[ -z "$_v" ] && _v=$(head_location)
+	printf '%s' "${_v#v}"
+}
+
 download() {   # <url> <file>
 	rm -f "$2"
 	if command -v curl >/dev/null 2>&1; then
@@ -43,71 +76,94 @@ download() {   # <url> <file>
 	return 1
 }
 
-# 1. пакетный менеджер
-if command -v apk >/dev/null 2>&1; then
-	MGR="apk"; EXT="apk"
-elif command -v opkg >/dev/null 2>&1; then
-	MGR="opkg"; EXT="ipk"
-else
-	fail "Не найден ни apk, ни opkg"
-fi
+run_update() {
+	trap 'rmdir "$LOCK" 2>/dev/null' EXIT
 
-echo "Пакетный менеджер: $MGR"
-
-# 2. последний релиз
-TAG=$(fetch "$API" | tr ',' '\n' | grep '"tag_name"' | head -n 1 | cut -d '"' -f4)
-[ -n "$TAG" ] || fail "Не удалось узнать последнюю версию (GitHub API недоступен)"
-VER=${TAG#v}
-echo "Последний релиз: $VER"
-
-# 3. что установлено сейчас
-if [ "$MGR" = "apk" ]; then
-	CUR=$(apk list -I "$PKG" 2>/dev/null | head -n 1 | awk '{print $1}' | sed "s/^$PKG-//")
-else
-	CUR=$(opkg list-installed "$PKG" 2>/dev/null | awk '{print $3}')
-fi
-
-echo "Установлено: ${CUR:-нет}"
-
-if [ -n "$CUR" ] && [ "$CUR" = "$VER" ]; then
-	echo "Уже последняя версия — обновлять нечего."
-	exit 0
-fi
-
-# 4. ссылка на файл релиза
-if [ "$EXT" = "apk" ]; then
-	URL="https://github.com/$REPO/releases/download/v$VER/$PKG-$VER.apk"
-else
-	URL="https://github.com/$REPO/releases/download/v$VER/${PKG}_${VER}_all.ipk"
-fi
-
-echo "Скачиваю $PKG $VER…"
-download "$URL" "/tmp/$PKG.$EXT" || fail "Не удалось скачать $URL"
-
-# 5. ключ подписи для apk
-if [ "$EXT" = "apk" ]; then
-	mkdir -p /etc/apk/keys
-	if [ ! -s "/etc/apk/keys/$PKG.rsa.pub" ]; then
-		echo "Ставлю ключ подписи…"
-		download "https://github.com/$REPO/releases/download/v$VER/$PKG.rsa.pub" \
-			"/etc/apk/keys/$PKG.rsa.pub" || echo "Ключ не скачался — ставлю с --allow-untrusted"
+	if command -v apk >/dev/null 2>&1; then
+		MGR="apk"; EXT="apk"
+	elif command -v opkg >/dev/null 2>&1; then
+		MGR="opkg"; EXT="ipk"
+	else
+		fail "не найден ни apk, ни opkg"
 	fi
-fi
 
-# 6. установка
-echo "Устанавливаю…"
-if [ "$MGR" = "apk" ]; then
-	apk add --allow-untrusted "/tmp/$PKG.$EXT" || fail "apk add завершился с ошибкой"
-else
-	opkg install "/tmp/$PKG.$EXT" || fail "opkg install завершился с ошибкой"
-fi
+	echo "Пакетный менеджер: $MGR"
 
-rm -f "/tmp/$PKG.$EXT" 2>/dev/null
+	echo "Смотрю последний релиз на GitHub…"
+	VER=$(latest_version)
+	[ -n "$VER" ] || fail "GitHub не ответил (ни API, ни редирект releases/latest)"
+	echo "Последний релиз: $VER"
 
-# 7. сброс кэшей LuCI
-rm -f /tmp/luci-indexcache* 2>/dev/null
-rm -rf /tmp/luci-modulecache/ 2>/dev/null
-[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1
+	if [ "$MGR" = "apk" ]; then
+		CUR=$(apk list -I "$PKG" 2>/dev/null | head -n 1 | awk '{print $1}' | sed "s/^$PKG-//")
+	else
+		CUR=$(opkg list-installed "$PKG" 2>/dev/null | awk '{print $3}')
+	fi
+	echo "Установлено: ${CUR:-нет}"
 
-echo "Готово: $PKG $VER установлен. Обнови страницу (F5)."
-exit 0
+	if [ -n "$CUR" ] && [ "$CUR" = "$VER" ]; then
+		echo "Уже последняя версия — обновлять нечего."
+		echo "$DONE 0"
+		return 0
+	fi
+
+	if [ "$EXT" = "apk" ]; then
+		URL="https://github.com/$REPO/releases/download/v$VER/$PKG-$VER.apk"
+	else
+		URL="https://github.com/$REPO/releases/download/v$VER/${PKG}_${VER}_all.ipk"
+	fi
+
+	echo "Скачиваю $PKG $VER…"
+	download "$URL" "/tmp/$PKG.$EXT" || fail "не удалось скачать $URL"
+
+	if [ "$EXT" = "apk" ]; then
+		mkdir -p /etc/apk/keys
+		if [ ! -s "/etc/apk/keys/$PKG.rsa.pub" ]; then
+			echo "Ставлю ключ подписи…"
+			download "https://github.com/$REPO/releases/download/v$VER/$PKG.rsa.pub" \
+				"/etc/apk/keys/$PKG.rsa.pub" || echo "Ключ не скачался — ставлю с --allow-untrusted"
+		fi
+	fi
+
+	echo "Устанавливаю…"
+	if [ "$MGR" = "apk" ]; then
+		apk add --allow-untrusted "/tmp/$PKG.$EXT" || fail "apk add завершился с ошибкой"
+	else
+		opkg install "/tmp/$PKG.$EXT" || fail "opkg install завершился с ошибкой"
+	fi
+
+	rm -f "/tmp/$PKG.$EXT" 2>/dev/null
+
+	echo "Чищу кэши LuCI…"
+	rm -f /tmp/luci-indexcache* 2>/dev/null
+	rm -rf /tmp/luci-modulecache/ 2>/dev/null
+	[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1
+
+	echo "Готово: $PKG $VER установлен. Обнови страницу (F5)."
+	echo "$DONE 0"
+	return 0
+}
+
+case "$1" in
+	--background)
+		: > "$LOG"
+		nohup sh "$0" __run >>"$LOG" 2>&1 &
+		echo "Обновление запущено в фоне."
+		exit 0
+		;;
+	__run)
+		if ! mkdir "$LOCK" 2>/dev/null; then
+			echo "Уже идёт обновление — смотри лог."
+			echo "$DONE 1"
+			exit 1
+		fi
+		run_update
+		;;
+	*)
+		if ! mkdir "$LOCK" 2>/dev/null; then
+			echo "Уже идёт обновление."
+			exit 1
+		fi
+		run_update
+		;;
+esac
