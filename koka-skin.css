@@ -889,6 +889,21 @@ textarea:invalid:focus {
 	filter: brightness(1.08);
 }
 
+/* ==== Кнопки верхнего блока: свой список + шестерёнка ==== */
+.koka-hero-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.koka-hero-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
 /* ==== Настройка кнопок «Быстрые действия» ==== */
 .koka-actions-edit {
 	margin-inline-start: auto;

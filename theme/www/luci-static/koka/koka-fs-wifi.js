@@ -655,6 +655,161 @@
 		return true;
 	}
 
+	var HERO_KEY = 'koka-hero-actions';
+
+	function loadHero() {
+		try {
+			var v = JSON.parse(localStorage.getItem(HERO_KEY) || 'null');
+			return Array.isArray(v) ? v : null;
+		}
+		catch (e) { return null; }
+	}
+
+	function saveHero(list) {
+		try { localStorage.setItem(HERO_KEY, JSON.stringify(list)); } catch (e) {}
+	}
+
+	function actionMarkup(a) {
+		return E('a', { class: 'koka-action', href: a.url, title: a.label }, [
+			E('span', { class: 'koka-ico ' + a.icon }),
+			E('span', {}, a.label)
+		]);
+	}
+
+	function renderHeroActions() {
+		var host = document.querySelector('.koka-hero-actions');
+
+		if (!host)
+			return false;
+
+		var list = loadHero();
+
+		if (!list) {
+			list = [].slice.call(host.querySelectorAll('a.koka-action, button.koka-action'))
+				.filter(function (a) { return !a.classList.contains('koka-toolbtn'); })
+				.map(function (a) {
+					var ico = a.querySelector('.koka-ico');
+					var label = (a.querySelector('span:not(.koka-ico)') || {}).textContent || a.textContent.trim();
+
+					return {
+						label: label.trim(),
+						url: a.getAttribute('href') || '#',
+						icon: ico ? ([].slice.call(ico.classList).filter(function (c) { return /^koka-ico-/.test(c); })[0] || 'koka-ico-net') : 'koka-ico-net'
+					};
+				})
+				.filter(function (a) { return a.label; });
+
+			saveHero(list);
+		}
+
+		var wrap = host.querySelector('.koka-hero-list');
+
+		if (!wrap) {
+			wrap = E('div', { class: 'koka-hero-list' });
+			host.insertBefore(wrap, host.firstChild);
+		}
+
+		wrap.replaceChildren.apply(wrap, list.map(actionMarkup));
+
+		/* прячем родные кнопки, чтобы не дублировались */
+		[].slice.call(host.querySelectorAll('a.koka-action, button.koka-action')).forEach(function (a) {
+			if (!a.closest('.koka-hero-list') && !a.classList.contains('koka-toolbtn'))
+				a.style.display = 'none';
+		});
+
+		var tools = host.querySelector('.koka-tools');
+
+		if (!tools) {
+			tools = E('div', { class: 'koka-tools' });
+			host.appendChild(tools);
+		}
+
+		if (!tools.querySelector('.koka-hero-edit')) {
+			var gear = E('button', { class: 'koka-actions-edit koka-hero-edit', type: 'button', title: 'Настроить кнопки' }, '⚙');
+
+			gear.addEventListener('click', function () { editHero(); });
+			tools.insertBefore(gear, tools.firstChild);
+		}
+
+		return true;
+	}
+
+	function editHero() {
+		return need('ui').then(function (ui) {
+			var list = (loadHero() || []).map(function (a) {
+				return { label: a.label || '', url: a.url || '', icon: a.icon || 'koka-ico-net' };
+			});
+
+			var body = E('div', { class: 'koka-ae' });
+
+			function draw() {
+				var rows = list.map(function (a, i) {
+					var labelInp = E('input', { class: 'cbi-input-text', type: 'text', value: a.label, placeholder: 'Название' });
+					var urlInp = E('input', { class: 'cbi-input-text', type: 'text', value: a.url, placeholder: '/cgi-bin/luci/...' });
+					var iconSel = E('select', { class: 'cbi-select' },
+						ACTION_ICONS.map(function (c) { return E('option', { value: c }, c.replace('koka-ico-', '')); }));
+
+					iconSel.value = a.icon;
+
+					return E('div', { class: 'koka-ae-row' }, [
+						labelInp, urlInp, iconSel,
+						E('button', {
+							class: 'btn cbi-button-remove', type: 'button', click: function (ev) {
+								ev.preventDefault();
+								list.splice(i, 1);
+								draw();
+							}
+						}, '×')
+					]);
+				});
+
+				body.replaceChildren.apply(body, [
+					E('p', { class: 'cbi-value-description' },
+						'Кнопки в верхнем блоке дашборда. Название, ссылка и иконка из набора темы.'),
+					E('div', {}, rows.length ? rows : [ E('p', { class: 'koka-empty' }, 'Пусто — добавь первую кнопку.') ])
+				]);
+			}
+
+			draw();
+
+			ui.showModal('Кнопки верхнего блока', [
+				body,
+				E('div', { class: 'right' }, [
+					E('button', {
+						class: 'btn', type: 'button', click: function (ev) {
+							ev.preventDefault();
+							list.push({ label: '', url: '', icon: 'koka-ico-net' });
+							draw();
+						}
+					}, 'Добавить'),
+					' ',
+					E('button', { class: 'btn cbi-button-negative', type: 'button', click: ui.hideModal }, 'Отмена'),
+					' ',
+					E('button', {
+						class: 'btn cbi-button-apply', type: 'button', click: function (ev) {
+							ev.preventDefault();
+
+							var out = [];
+
+							[].slice.call(body.querySelectorAll('.koka-ae-row')).forEach(function (r) {
+								var f = r.querySelectorAll('input, select');
+								var label = f[0].value.trim();
+								var url = f[1].value.trim();
+
+								if (label && url)
+									out.push({ label: label, url: url, icon: f[2].value });
+							});
+
+							saveHero(out);
+							ui.hideModal();
+							renderHeroActions();
+						}
+					}, 'Сохранить')
+				])
+			]);
+		});
+	}
+
 	function boot() {
 		if (document.body.getAttribute('data-page') !== 'admin-status-koka')
 			return;
@@ -749,8 +904,9 @@
 			var ports = decoratePorts();
 			var acts = renderActions();
 			var tools = setupHeroTools();
+			var heroActs = renderHeroActions();
 
-			if ((attached && injected && ports && acts && tools) || ++tries > 60) {
+			if ((attached && injected && ports && acts && tools && heroActs) || ++tries > 60) {
 				window.clearInterval(timer);
 				refresh();
 			}
