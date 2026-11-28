@@ -263,36 +263,72 @@
 		return null;
 	}
 
-	function portLabels() {
-		return run(UBUS, [ 'call', 'network.interface', 'dump' ]).then(function (res) {
-			var dump;
+	function read(path) {
+		return need('fs').then(function (fs) {
+			return fs.read(path);
+		}).catch(function () { return ''; });
+	}
+
+	function portInfo(name) {
+		return Promise.all([
+			read('/sys/class/net/' + name + '/carrier'),
+			read('/sys/class/net/' + name + '/speed'),
+			read('/sys/class/net/' + name + '/statistics/rx_bytes'),
+			read('/sys/class/net/' + name + '/statistics/tx_bytes')
+		]).then(function (res) {
+			var speed = parseInt(res[1] || '', 10);
+
+			return {
+				name: name,
+				link: String(res[0] || '').trim() === '1',
+				speed: speed > 0 ? speed : 0,
+				rx: parseInt(res[2] || '0', 10) || 0,
+				tx: parseInt(res[3] || '0', 10) || 0
+			};
+		});
+	}
+
+	function bytes(v) {
+		if (v >= 1048576) return (Math.round(v / 104857.6) / 10) + ' MiB';
+		if (v >= 1024) return Math.round(v / 1024) + ' KiB';
+		return v + ' B';
+	}
+
+	function portsModel() {
+		return Promise.all([
+			run(UBUS, [ 'call', 'network.device', 'status', '{"name":"br-lan"}' ]),
+			run(UBUS, [ 'call', 'network.interface', 'dump' ])
+		]).then(function (res) {
+			var members = [];
+			var wanDev = null;
 
 			try {
-				dump = JSON.parse(res.stdout || '{}');
+				members = JSON.parse(res[0].stdout || '{}')['bridge-members'] || [];
 			}
-			catch (e) {
-				dump = {};
+			catch (e) {}
+
+			try {
+				var dump = JSON.parse(res[1].stdout || '{}');
+
+				((dump.interface) || []).forEach(function (i) {
+					if (i.interface === 'wan')
+						wanDev = i.l3_device || i.device;
+				});
 			}
+			catch (e) {}
 
-			var wanDev = null;
-			var lanDev = null;
+			return Promise.all(members.map(function (m) {
+				return portInfo(m).then(function (p) { p.role = 'LAN'; return p; });
+			})).then(function (lan) {
+				if (!wanDev)
+					return lan;
 
-			((dump.interface) || []).forEach(function (i) {
-				var dev = i.l3_device || i.device;
-
-				if (!dev)
-					return;
-
-				if (i.interface === 'wan')
-					wanDev = dev;
-				else if (i.interface === 'lan')
-					lanDev = dev;
+				return portInfo(wanDev).then(function (p) {
+					p.role = 'WAN';
+					return lan.concat([ p ]);
+				});
 			});
-
-			return { wan: wanDev, lan: lanDev };
-		}).catch(function () {
-			return { wan: null, lan: null };
-		});
+		}).catch(function () { return []; });
 	}
 
 	function decoratePorts() {
@@ -303,44 +339,32 @@
 
 		card.__kokaPorts = true;
 
+		var box = card.querySelector('.koka-ports');
+
+		if (!box)
+			return false;
+
 		function apply() {
-			portLabels().then(function (map) {
-				[].slice.call(card.querySelectorAll('.koka-port')).forEach(function (row) {
-					var nameEl = row.querySelector('.koka-port-name');
+			portsModel().then(function (ports) {
+				if (!ports.length)
+					return;
 
-					if (!nameEl)
-						return;
-
-					if (row.querySelector('.koka-ico-rj45')) {
-						if (nameEl.textContent.trim() === (map.wan ? 'wan' : 'br-lan'))
-							return;
-					}
-
-					var dev = nameEl.getAttribute('data-dev') || nameEl.textContent.trim();
-					var isWan = (map.wan && dev === map.wan) || (!map.wan && /^eth1$/.test(dev));
-					var label = isWan ? 'wan' : 'br-lan';
-
-					nameEl.setAttribute('data-dev', dev);
-					nameEl.textContent = label;
-
-					if (!row.querySelector('.koka-ico-rj45'))
-						row.insertBefore(E('span', { class: 'koka-ico koka-ico-rj45' + (isWan ? ' wan' : ''), title: dev }), nameEl);
-
-					var roleEl = row.querySelector('.koka-role');
-
-					if (roleEl) {
-						roleEl.textContent = isWan ? 'WAN' : 'LAN';
-						roleEl.classList.toggle('wan', isWan);
-					}
-					else {
-						row.insertBefore(E('span', { class: 'koka-role' + (isWan ? ' wan' : '') }, isWan ? 'WAN' : 'LAN'), nameEl.nextSibling);
-					}
-				});
+				box.replaceChildren.apply(box, ports.map(function (p) {
+					return E('div', { class: 'koka-port' + (p.link ? '' : ' off') }, [
+						E('span', { class: 'koka-dot' + (p.link ? ' on' : '') }),
+						E('span', { class: 'koka-ico koka-ico-rj45' + (p.role === 'WAN' ? ' wan' : '') }),
+						E('span', { class: 'koka-port-name' }, p.name),
+						E('span', { class: 'koka-role' + (p.role === 'WAN' ? ' wan' : '') }, p.role),
+						E('div', { class: 'koka-port-main' }, [
+							E('span', { class: 'koka-port-speed' }, p.link ? (p.speed ? p.speed + ' Mb/s' : 'линк') : 'нет линка'),
+							E('span', { class: 'koka-port-bytes' }, p.link ? ('↓ ' + bytes(p.rx) + ' ↑ ' + bytes(p.tx)) : '')
+						])
+					]);
+				}));
 			});
 		}
 
 		apply();
-
 		new MutationObserver(apply).observe(card, { childList: true, subtree: true });
 
 		return true;
@@ -392,7 +416,7 @@
 
 		var card = E('section', { class: 'koka-card koka-wifi-card' }, [
 			E('header', { class: 'koka-card-head' }, [
-				E('span', { class: 'koka-card-ico koka-ico koka-ico-link' }),
+				E('span', { class: 'koka-card-ico koka-ico koka-ico-wifi' }),
 				E('span', { class: 'koka-card-title' }, 'Wi-Fi')
 			]),
 			E('div', { class: 'koka-card-body' }, [ box ])
