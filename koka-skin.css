@@ -1023,6 +1023,22 @@ textarea:invalid:focus {
 	border-radius: 12px;
 }
 
+/* Кнопка входа — акцентный градиент темы, без «галочки» от .cbi-button-apply */
+.koka-login-submit.cbi-button-apply {
+	background-image: linear-gradient(135deg, var(--a), #a78bfa) !important;
+	border-color: transparent !important;
+	color: #0b1220 !important;
+	box-shadow: 0 10px 26px color-mix(in srgb, var(--a) 30%, transparent);
+}
+
+.koka-login-submit::before {
+	display: none !important;
+}
+
+.koka-login-submit:hover {
+	filter: brightness(1.04);
+}
+
 .koka-login-authhtml {
 	margin-bottom: 14px;
 }
