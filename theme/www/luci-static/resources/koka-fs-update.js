@@ -30,6 +30,7 @@ return baseclass.extend({
 
 		var timer = null;
 		var started = 0;
+		var stalls = 0;
 
 		function log(text) {
 			out.hidden = false;
@@ -75,9 +76,22 @@ return baseclass.extend({
 		function poll() {
 			readLog().then(function (data) {
 				if (data === null) {
+					/* В конце обновления rpcd перезапускается, и запросы к нему
+					 * могут висеть. После нескольких таких подряд не мучаем
+					 * пользователя — предлагаем перезагрузить страницу. */
+					if (++stalls >= 4) {
+						stop();
+						log('Обновление выполнено (лог недоступен: rpcd перезапустился).\nПерезагрузи страницу.');
+						notify('Скорее всего тема обновлена — перезагрузи страницу.', 'info');
+						reload.hidden = false;
+						return;
+					}
+
 					timer = window.setTimeout(poll, POLL_MS);
 					return;
 				}
+
+				stalls = 0;
 
 				var text = String(data || '');
 				var m = text.match(new RegExp(DONE + '\\s+(\\d)'));
