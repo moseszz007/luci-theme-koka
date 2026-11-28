@@ -1010,9 +1010,9 @@ textarea:invalid:focus {
 
 /* ==== Индикаторы детектора на дашборде ==== */
 .koka-net-extra {
-	margin-top: 10px;
-	padding-top: 10px;
-	border-top: 1px solid color-mix(in srgb, var(--S) 40%, transparent);
+	margin: 0 0 10px;
+	padding: 0 0 10px;
+	border-bottom: 1px solid color-mix(in srgb, var(--O, #34d399) 45%, transparent);
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
