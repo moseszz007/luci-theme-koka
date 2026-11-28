@@ -100,4 +100,5 @@ try { has_catalog = length(require('fs').glob(`/usr/lib/lua/luci/i18n/*.${dispat
 {% endif %}
 
 <script src="{{ resource }}/cbi.js?v={{ pkgs_update_time }}"></script>
-<script src="{{ media }}/koka-icon-bust.js?v={{ pkgs_update_time }}"></script></head>
+<script src="{{ media }}/koka-icon-bust.js?v={{ pkgs_update_time }}"></script>
+<script src="{{ media }}/koka-fs-wifi.js?v={{ pkgs_update_time }}"></script></head>

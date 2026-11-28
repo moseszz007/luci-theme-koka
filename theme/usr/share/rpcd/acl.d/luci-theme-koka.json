@@ -48,6 +48,18 @@
 				],
 				"/etc/init.d/koka-update": [
 					"exec"
+				],
+				"/bin/ubus": [
+					"exec"
+				],
+				"/usr/bin/iwinfo": [
+					"exec"
+				],
+				"/sbin/uci": [
+					"exec"
+				],
+				"/sbin/wifi": [
+					"exec"
 				]
 			}
 		}
