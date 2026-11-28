@@ -828,20 +828,29 @@ textarea:invalid:focus {
 		backdrop-filter: none !important;
 	}
 
+	/* В верхней раскладке шапка — это .fs-sidebar. В боковой раскладке
+	 * (планшет) .fs-sidebar — высокая колонка, её не блюрим. */
+	.koka-glass[data-layout="top"] .fs-sidebar,
+	.koka-glass[data-narrow] .fs-sidebar {
+		background: color-mix(in srgb, var(--an) 76%, transparent) !important;
+	}
+
+	.koka-glass[data-layout="top"] .fs-sidebar,
+	.koka-glass[data-narrow] .fs-sidebar,
 	.koka-glass .fs-bar,
 	.koka-glass header.fs-bar,
 	.koka-glass .modal,
 	.koka-glass .fs-search-box {
-		-webkit-backdrop-filter: blur(10px) saturate(1.15);
-		backdrop-filter: blur(10px) saturate(1.15);
+		-webkit-backdrop-filter: blur(10px) saturate(1.15) !important;
+		backdrop-filter: blur(10px) saturate(1.15) !important;
 	}
 
 	.koka-glass ul.dropdown,
 	.koka-glass .cbi-dropdown > ul.dropdown,
 	.koka-glass .fs-sidebar ul.nav ul,
 	.koka-glass #topmenu ul {
-		-webkit-backdrop-filter: blur(14px) saturate(1.1);
-		backdrop-filter: blur(14px) saturate(1.1);
+		-webkit-backdrop-filter: blur(14px) saturate(1.1) !important;
+		backdrop-filter: blur(14px) saturate(1.1) !important;
 	}
 
 	.koka-glass #view .cbi-section,
@@ -854,5 +863,9 @@ textarea:invalid:focus {
 	.koka-glass .fs-bar,
 	.koka-glass header.fs-bar {
 		background: color-mix(in srgb, var(--an) 76%, transparent) !important;
+	}
+
+	.koka-glass .fs-sidebar {
+		background: var(--an) !important;
 	}
 }
