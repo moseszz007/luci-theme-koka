@@ -84,7 +84,9 @@ return baseclass.extend({
 
 				log(text);
 
-				if (m)
+				/* Первые пару секунд лог может быть ещё от прошлого запуска:
+				 * служба очищает его чуть позже, чем мы делаем первый запрос. */
+				if (m && Date.now() - started > 2000)
 					return finish(text, m[1] === '0');
 
 				if (Date.now() - started > MAX_MS) {
