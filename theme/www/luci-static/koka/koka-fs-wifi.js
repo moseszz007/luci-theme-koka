@@ -113,6 +113,31 @@
 		});
 	}
 
+	function inetStatus() {
+		return need('rpc').then(function (rpc) {
+			var call = rpc.declare({ object: 'luci.internet-detector', method: 'InetStatus', expect: { '': {} } });
+
+			return call().catch(function () { return { instances: [] }; });
+		});
+	}
+
+	function detectorConfig() {
+		return run(UCI, [ '-q', 'show', 'internet-detector' ]).then(function (res) {
+			var cfg = {};
+
+			(res.stdout || '').split('\n').forEach(function (line) {
+				var m = line.match(/^internet-detector\.([^.=]+)\.(hosts|urls|interval_up|check_type)='(.*)'$/);
+
+				if (m) {
+					cfg[m[1]] = cfg[m[1]] || {};
+					cfg[m[1]][m[2]] = m[3];
+				}
+			});
+
+			return cfg;
+		});
+	}
+
 	function vpnState() {
 		return Promise.all([
 			run(UCI, [ '-q', 'show', 'network' ]),
@@ -141,11 +166,7 @@
 				try {
 					var zt = JSON.parse(res[2].stdout || '{}');
 
-					out.push({
-						name: 'ZeroTier',
-						up: !!zt.online,
-						zt: true
-					});
+					out.push({ name: 'ZeroTier', up: !!zt.online });
 				}
 				catch (e) {}
 			}
@@ -155,35 +176,67 @@
 	}
 
 	function refreshInternet(box) {
-		Promise.all([ pingLatency(), vpnState() ]).then(function (res) {
+		Promise.all([ pingLatency(), inetStatus(), detectorConfig(), vpnState() ]).then(function (res) {
 			var ping = res[0];
-			var vpn = res[1];
+			var instances = (res[1] && res[1].instances) || [];
+			var cfg = res[2];
+			var vpn = res[3];
+			var rows = [];
 
-			var rows = [
-				E('div', { class: 'koka-row' }, [
-					E('span', { class: 'koka-label' }, [
+			function kindOf(inet) {
+				return inet == 0 ? 'good' : (inet == -1 ? 'warn' : 'bad');
+			}
+
+			function textOf(inet) {
+				return inet == 0 ? 'Онлайн' : (inet == -1 ? 'Неизвестно' : 'Офлайн');
+			}
+
+			if (instances.length) {
+				instances.forEach(function (inst) {
+					var c = cfg[inst.instance] || {};
+					var params = [];
+
+					if (c.hosts)
+						params.push(c.hosts);
+
+					if (c.interval_up)
+						params.push('каждые ' + c.interval_up + ' с');
+
+					rows.push(E('div', { class: 'koka-det' }, [
+						E('div', { class: 'koka-det-main' }, [
+							E('span', { class: 'koka-ico koka-ico-net' }),
+							E('span', { class: 'koka-det-name' }, inst.instance),
+							netPill(textOf(inst.inet), kindOf(inst.inet)),
+							ping.ms != null
+								? E('span', { class: 'koka-det-ms' }, Math.round(ping.ms) + ' мс')
+								: ''
+						]),
+						params.length
+							? E('div', { class: 'koka-det-params' }, params.join(' · '))
+							: ''
+					]));
+				});
+			}
+			else {
+				rows.push(E('div', { class: 'koka-det' }, [
+					E('div', { class: 'koka-det-main' }, [
 						E('span', { class: 'koka-ico koka-ico-net' }),
-						' Интернет'
-					]),
-					E('span', { class: 'koka-net-val' }, [
+						E('span', { class: 'koka-det-name' }, 'Детектор'),
 						netPill(ping.ok ? 'есть' : 'нет', ping.ok ? 'good' : 'bad'),
-						ping.ms != null ? E('b', {}, Math.round(ping.ms) + ' мс') : ''
+						ping.ms != null ? E('span', { class: 'koka-det-ms' }, Math.round(ping.ms) + ' мс') : ''
 					])
-				])
-			];
+				]));
+			}
 
 			if (vpn.length) {
-				rows.push(E('div', { class: 'koka-row' }, [
-					E('span', { class: 'koka-label' }, [
+				rows.push(E('div', { class: 'koka-det' }, [
+					E('div', { class: 'koka-det-main' }, [
 						E('span', { class: 'koka-ico koka-ico-shield' }),
-						' VPN'
-					]),
-					E('span', { class: 'koka-vpns' }, vpn.map(function (v) {
-						return E('span', {
-							class: 'koka-vpn' + (v.up ? ' on' : ''),
-							title: v.up ? 'поднят' : 'лежит'
-						}, v.name);
-					}))
+						E('span', { class: 'koka-det-name' }, 'VPN'),
+						E('span', { class: 'koka-vpns' }, vpn.map(function (v) {
+							return E('span', { class: 'koka-vpn' + (v.up ? ' on' : ''), title: v.up ? 'поднят' : 'лежит' }, v.name);
+						}))
+					])
 				]));
 			}
 
@@ -194,8 +247,18 @@
 	function injectInternet() {
 		var card = internetCard();
 
-		if (!card || card.querySelector('.koka-net-extra'))
-			return !!card;
+		if (!card)
+			return false;
+
+		/* Старые пилюли детектора («internet: Онлайн») убираем: ниже идут
+		 * наши индикаторы с иконками и параметрами. */
+		[].slice.call(card.querySelectorAll('.koka-pill')).forEach(function (pill) {
+			if (/^[^:]+:\s*(Онлайн|Офлайн|Неизвестно)$/.test(pill.textContent.trim()))
+				pill.remove();
+		});
+
+		if (card.querySelector('.koka-net-extra'))
+			return true;
 
 		var box = E('div', { class: 'koka-net-extra' });
 		var host = card.querySelector('.koka-card-body') || card;

@@ -846,31 +846,49 @@ textarea:invalid:focus {
 	--koka-bg-op: 1;
 }
 
-/* ==== Статусы интернета и VPN на дашборде ==== */
+/* ==== Индикаторы детектора на дашборде ==== */
 .koka-net-extra {
-	margin-top: 8px;
-	padding-top: 8px;
-	border-top: 1px dashed color-mix(in srgb, var(--S) 45%, transparent);
+	margin-top: 10px;
+	padding-top: 10px;
+	border-top: 1px solid color-mix(in srgb, var(--S) 40%, transparent);
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
 }
 
-.koka-net-extra .koka-label {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
+.koka-det {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
 }
 
-.koka-net-extra .koka-ico {
-	width: 15px;
-	height: 15px;
-}
-
-.koka-net-val {
-	display: inline-flex;
+.koka-det-main {
+	display: flex;
 	align-items: center;
 	gap: 8px;
+	min-width: 0;
+}
+
+.koka-det-main .koka-ico {
+	width: 17px;
+	height: 17px;
+	flex: 0 0 auto;
+	opacity: .9;
+}
+
+.koka-det-name {
+	font-weight: 600;
+	font-size: .92rem;
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .koka-net-pill {
+	flex: 0 0 auto;
 	padding: 1px 9px;
 	border-radius: 999px;
 	font-size: .76rem;
@@ -883,9 +901,49 @@ textarea:invalid:focus {
 	color: var(--O, #15803d);
 }
 
+.koka-net-pill.warn {
+	background: color-mix(in srgb, var(--R, #b45309) 18%, transparent);
+	color: var(--R, #b45309);
+}
+
 .koka-net-pill.bad {
 	background: color-mix(in srgb, var(--K, #dc2626) 18%, transparent);
 	color: var(--K, #dc2626);
+}
+
+.koka-det-ms {
+	margin-inline-start: auto;
+	flex: 0 0 auto;
+	font-family: var(--M, ui-monospace);
+	font-size: .82rem;
+	color: var(--c);
+}
+
+.koka-det-params {
+	padding-inline-start: 25px;
+	font-size: .73rem;
+	color: color-mix(in srgb, var(--c) 70%, transparent);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.koka-vpns {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+	margin-inline-start: auto;
+	justify-content: flex-end;
+}
+
+.koka-vpn {
+	font-size: .7rem;
+	padding: .2em .55em;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--V) 60%, transparent);
+	border: 1px solid color-mix(in srgb, var(--S) 45%, transparent);
+	color: var(--c);
+	font-family: var(--M, ui-monospace);
 }
 
 .koka-vpn.on {
