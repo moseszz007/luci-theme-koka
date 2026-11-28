@@ -45,8 +45,13 @@ return baseclass.extend({
 				log(text || ('Скрипт завершился с кодом ' + res.code));
 
 				if (res.code === 0) {
-					notify('Тема обновлена — перезагрузи страницу.', 'info');
-					reload.hidden = false;
+					var upToDate = /Уже последняя/.test(text);
+
+					notify(upToDate
+						? 'Установлена последняя версия темы.'
+						: 'Тема обновлена — перезагрузи страницу.', 'info');
+
+					reload.hidden = upToDate;
 				}
 				else {
 					notify('Обновление не удалось — смотри лог ниже.', 'error');
