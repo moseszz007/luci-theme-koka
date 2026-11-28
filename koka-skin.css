@@ -881,15 +881,14 @@ textarea:invalid:focus {
 	}
 
 	.koka-glass #view .cbi-section,
-	.koka-glass .fs-ap-card,
-	.koka-glass .fs-sidebar {
+	.koka-glass .fs-ap-card {
 		background: var(--an) !important;
 		box-shadow: 0 6px 18px rgba(2, 8, 23, .16) !important;
 	}
 
 	.koka-glass .fs-bar,
 	.koka-glass header.fs-bar {
-		background: color-mix(in srgb, var(--an) 76%, transparent) !important;
+		background: transparent !important;
 	}
 
 	.koka-glass:not([data-layout="top"]):not([data-narrow]) .fs-sidebar {
