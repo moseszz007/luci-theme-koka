@@ -786,6 +786,66 @@ textarea:invalid:focus {
 		0 0 20px color-mix(in srgb, var(--fs-danger) 45%, transparent) !important;
 }
 
+/* ==== Встроенные SVG-узоры фона ====
+ * Слой рисуется псевдоэлементом body, поэтому не участвует в раскладке,
+ * не перехватывает события и не добавляет перерисовок при скролле
+ * (position: fixed + простой повторяемый SVG ~1 КБ).
+ * Выбор хранится в UCI и рендерится в data-bg ещё до первой отрисовки. */
+:root[data-bg][data-bg] body {
+	background: transparent !important;
+}
+
+:root[data-bg] body::before {
+	content: "";
+	position: fixed;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
+	background-image: var(--koka-bg-img, none);
+	background-size: var(--koka-bg-size, 24px 24px);
+	background-repeat: var(--koka-bg-repeat, repeat);
+	background-position: var(--koka-bg-pos, 0 0);
+	opacity: var(--koka-bg-op, .8);
+}
+
+:root[data-bg="dots"] {
+	--koka-bg-img: url("/luci-static/koka/bg/dots.svg");
+	--koka-bg-size: 24px 24px;
+	--koka-bg-op: .75;
+}
+
+:root[data-bg="grid"] {
+	--koka-bg-img: url("/luci-static/koka/bg/grid.svg");
+	--koka-bg-size: 32px 32px;
+	--koka-bg-op: .7;
+}
+
+:root[data-bg="topo"] {
+	--koka-bg-img: url("/luci-static/koka/bg/topo.svg");
+	--koka-bg-size: 240px 180px;
+	--koka-bg-op: .85;
+}
+
+:root[data-bg="waves"] {
+	--koka-bg-img: url("/luci-static/koka/bg/waves.svg");
+	--koka-bg-size: 200px 120px;
+	--koka-bg-op: .8;
+}
+
+:root[data-bg="diag"] {
+	--koka-bg-img: url("/luci-static/koka/bg/diag.svg");
+	--koka-bg-size: 40px 40px;
+	--koka-bg-op: .75;
+}
+
+:root[data-bg="mesh"] {
+	--koka-bg-img: url("/luci-static/koka/bg/mesh.svg");
+	--koka-bg-size: cover;
+	--koka-bg-repeat: no-repeat;
+	--koka-bg-pos: 50% 50%;
+	--koka-bg-op: 1;
+}
+
 /* Лог обновления темы (Система -> Koka -> Обновление). */
 .fs-ap-out {
 	margin-top: 12px;

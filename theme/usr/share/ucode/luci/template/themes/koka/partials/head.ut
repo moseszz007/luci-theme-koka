@@ -4,6 +4,7 @@ let _sd_lay  = index([ 'sidebar', 'top' ], fs_defaults.layout) >= 0 ? fs_default
 let _sd_dark = index([ 'auto', 'light', 'dark' ], fs_defaults.darkmode) >= 0 ? fs_defaults.darkmode : '';
 let _sd_pal  = index([ 'koka', 'hicontrast', 'bootstrap', '2020', 'forum' ], fs_defaults.palette) >= 0 ? fs_defaults.palette : '';
 let _sd_wall = index([ 'off', 'pattern', 'file' ], fs_defaults.wallpaper) >= 0 ? fs_defaults.wallpaper : '';
+let _sd_bg   = index([ 'dots', 'grid', 'topo', 'waves', 'diag', 'mesh' ], fs_defaults.wallpaper_bg) >= 0 ? fs_defaults.wallpaper_bg : '';
 let _sd_pink = index([ 'theme', 'original' ], fs_defaults.pattern_ink) >= 0 ? fs_defaults.pattern_ink : '';
 let _sd_ac   = index([ 'on', 'off' ], fs_defaults.autocollapse) >= 0 ? fs_defaults.autocollapse : '';
 let _sd_dens = index([ 'compact', 'normal', 'large' ], fs_defaults.density) >= 0 ? fs_defaults.density : '';
@@ -59,7 +60,7 @@ let _lbase = lc(split(_lang, /[-_]/)[0]);
 let _rtl = index([ 'ar', 'arc', 'ckb', 'dv', 'fa', 'he', 'khw', 'ks', 'ps', 'sd', 'ug', 'ur', 'yi' ], _lbase) >= 0;
 %}
 
-<html lang="{{ dispatcher.lang }}" dir="{{ _rtl ? 'rtl' : 'ltr' }}" data-layout="{{ _sd_lay == 'sidebar' ? 'sidebar' : 'top' }}">
+<html lang="{{ dispatcher.lang }}" dir="{{ _rtl ? 'rtl' : 'ltr' }}" data-layout="{{ _sd_lay == 'sidebar' ? 'sidebar' : 'top' }}"{{ _sd_bg != '' ? ' data-bg="' + _sd_bg + '"' : '' }}>
 <head>
 <meta charset="utf-8">
 <title>{{ entityencode(striptags(`${boardinfo.hostname ?? 'OpenWrt'}${dispatched?.title ? ` | ${_(dispatched.title)}` : ''}`), true) }}</title>
