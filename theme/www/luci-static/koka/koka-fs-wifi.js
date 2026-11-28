@@ -246,6 +246,7 @@
 				});
 			})).then(function (rows) {
 				box.replaceChildren.apply(box, rows);
+				wifiKeys().then(function (keys) { decorateWifiKeys(box, keys); });
 			});
 		});
 	}
@@ -844,15 +845,98 @@
 		function attach() {
 			var h = host();
 
-			if (h && !h.querySelector('.koka-wifi-card')) {
-				h.appendChild(card);
-				return true;
+			if (!h)
+				return false;
+
+			var quick = quickCard();
+
+			if (!h.querySelector('.koka-wifi-card')) {
+				if (quick && quick.parentNode === h)
+					h.insertBefore(card, quick);
+				else
+					h.appendChild(card);
 			}
 
-			return false;
+			if (quick && quick.style.display !== 'none')
+				quick.style.display = 'none';
+
+			return true;
 		}
 
-		function refresh() {
+		function wifiKeys() {
+		return run(UCI, [ '-q', 'show', 'wireless' ]).then(function (res) {
+			var secs = {};
+			var cur = null;
+			var map = {};
+
+			(res.stdout || '').split('\n').forEach(function (line) {
+				var s = line.match(/^wireless\.([^.=]+)=(\w+)$/);
+				var o = line.match(/^\s*option\s+(\w+)\s+'([^']*)'\s*$/);
+
+				if (s) {
+					cur = { type: s[2], opts: {} };
+					secs[s[1]] = cur;
+					return;
+				}
+
+				if (o && cur)
+					cur.opts[o[1]] = o[2];
+			});
+
+			Object.keys(secs).forEach(function (k) {
+				var c = secs[k];
+
+				if (c.type !== 'wifi-iface')
+					return;
+
+				var ssid = c.opts.ssid;
+				var key = c.opts.key || c.opts.sae_password || c.opts.password;
+
+				if (ssid && key)
+					map[ssid] = key;
+			});
+
+			return map;
+		}).catch(function () { return {}; });
+	}
+
+	function decorateWifiKeys(box, keys) {
+		[].slice.call(box.querySelectorAll('.koka-wifi-row')).forEach(function (row) {
+			var ssidEl = row.querySelector('.koka-wifi-ssid');
+
+			if (!ssidEl || row.querySelector('.koka-wifi-eye'))
+				return;
+
+			var key = keys[ssidEl.textContent.trim()];
+
+			if (!key)
+				return;
+
+			var keyEl = E('span', { class: 'koka-wifi-key koka-hidden' }, key);
+			var toggle = row.querySelector('.koka-wifi-toggle');
+
+			if (!toggle)
+				return;
+
+			var eye = E('button', {
+				class: 'koka-wifi-eye',
+				type: 'button',
+				title: 'Показать пароль'
+			}, '\u{1F441}');
+
+			eye.addEventListener('click', function (ev) {
+				ev.preventDefault();
+				keyEl.classList.toggle('koka-hidden');
+				eye.classList.toggle('on');
+				eye.title = keyEl.classList.contains('koka-hidden') ? 'Показать пароль' : 'Скрыть пароль';
+			});
+
+			row.insertBefore(eye, toggle);
+			row.insertBefore(keyEl, toggle);
+		});
+	}
+
+	function refresh() {
 			radios().then(function (list) {
 				if (!list.length) {
 					box.textContent = 'Wi-Fi выключен';
