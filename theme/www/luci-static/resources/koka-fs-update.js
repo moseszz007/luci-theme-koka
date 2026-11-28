@@ -63,8 +63,22 @@ return baseclass.extend({
 			reload.hidden = upToDate;
 		}
 
+		function readLog() {
+			/* rpcd перезапускается в конце обновления: запрос может не
+			 * ответить и не упасть. Не ждём его вечно — пробуем снова. */
+			return Promise.race([
+				fs.read(LOG).catch(function () { return ''; }),
+				new Promise(function (resolve) { setTimeout(function () { resolve(null); }, 5000); })
+			]);
+		}
+
 		function poll() {
-			fs.read(LOG).then(function (data) {
+			readLog().then(function (data) {
+				if (data === null) {
+					timer = window.setTimeout(poll, POLL_MS);
+					return;
+				}
+
 				var text = String(data || '');
 				var m = text.match(new RegExp(DONE + '\\s+(\\d)'));
 

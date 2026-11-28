@@ -44,7 +44,10 @@
 
 		var file = src.substring(idx + 7).split('?')[0].replace(/^.*\//, '');
 
-		return ICONS.indexOf(file) >= 0 ? DIR + file + '?v=' + MARK : null;
+		if (!/\.svg$/i.test(file))
+			return null;
+
+		return ICONS.indexOf(file.replace(/\.svg$/i, '')) >= 0 ? DIR + file + '?v=' + MARK : null;
 	}
 
 	function bust(img) {
