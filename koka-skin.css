@@ -889,6 +889,41 @@ textarea:invalid:focus {
 	filter: brightness(1.08);
 }
 
+/* ==== Дополнительные иконки для кнопок ==== */
+.koka-ico-lock {
+	-webkit-mask-image: var(--kd-lock);
+	mask-image: var(--kd-lock);
+}
+
+.koka-ico-check {
+	-webkit-mask-image: var(--koka-ico-check);
+	mask-image: var(--koka-ico-check);
+}
+
+.koka-ico-edit {
+	-webkit-mask-image: var(--koka-ico-edit);
+	mask-image: var(--koka-ico-edit);
+}
+
+.koka-ico-trash {
+	-webkit-mask-image: var(--koka-ico-trash);
+	mask-image: var(--koka-ico-trash);
+}
+
+.koka-ico-reset {
+	-webkit-mask-image: var(--koka-ico-reset);
+	mask-image: var(--koka-ico-reset);
+}
+
+.koka-ico-help {
+	-webkit-mask-image: var(--koka-ico-help);
+	mask-image: var(--koka-ico-help);
+}
+
+:root {
+	--kd-lock: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='10.5' width='16' height='9.5' rx='2.4'/%3E%3Cpath d='M8 10.5V8a4 4 0 0 1 8 0v2.5'/%3E%3C/svg%3E");
+}
+
 /* ==== Кнопки верхнего блока: свой список + шестерёнка ==== */
 .koka-hero-list {
 	display: flex;

@@ -1018,7 +1018,7 @@ return view.extend({
 			E('span', {}, 'Все адреса')
 		]));
 
-		const services = card('koka-ico-services', 'Сервисы');
+		const services = card('koka-ico-check', 'Статусы сервисов');
 		services.el.classList.add('span5');
 		refs.services = E('div', { 'class': 'koka-services' });
 		services.body.appendChild(refs.services);
@@ -1207,7 +1207,7 @@ return view.extend({
 			internet: 'Интернет',
 			system: 'Система',
 			clients: 'Клиенты',
-			services: 'Сервисы',
+			services: 'Статусы сервисов',
 			ports: 'Порты',
 			quick: 'Быстрые действия',
 			resources: 'Ресурсы'

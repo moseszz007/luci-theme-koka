@@ -458,10 +458,23 @@
 	}
 
 	var ACTION_ICONS = [
-		'koka-ico-net', 'koka-ico-net2', 'koka-ico-shield', 'koka-ico-dns', 'koka-ico-wifi',
-		'koka-ico-plug', 'koka-ico-bolt', 'koka-ico-services', 'koka-ico-dhcp',
-		'koka-ico-reboot', 'koka-ico-pulse', 'koka-ico-sliders', 'koka-ico-users', 'koka-ico-link'
+		'koka-ico-net', 'koka-ico-net2', 'koka-ico-router', 'koka-ico-sys', 'koka-ico-shield',
+		'koka-ico-lock', 'koka-ico-dns', 'koka-ico-wifi', 'koka-ico-plug', 'koka-ico-bolt',
+		'koka-ico-services', 'koka-ico-dhcp', 'koka-ico-reboot', 'koka-ico-pulse',
+		'koka-ico-sliders', 'koka-ico-users', 'koka-ico-link', 'koka-ico-refresh',
+		'koka-ico-check', 'koka-ico-edit', 'koka-ico-trash', 'koka-ico-reset', 'koka-ico-help'
 	];
+
+	var ICON_TITLES = {
+		'koka-ico-net': 'Глобус', 'koka-ico-net2': 'Сеть', 'koka-ico-router': 'Роутер',
+		'koka-ico-sys': 'Система', 'koka-ico-shield': 'Щит (VPN)', 'koka-ico-lock': 'Замок',
+		'koka-ico-dns': 'DNS', 'koka-ico-wifi': 'Wi-Fi', 'koka-ico-plug': 'Порт',
+		'koka-ico-bolt': 'Молния', 'koka-ico-services': 'Сервисы', 'koka-ico-dhcp': 'DHCP',
+		'koka-ico-reboot': 'Перезагрузка', 'koka-ico-pulse': 'Мониторинг',
+		'koka-ico-sliders': 'Настройки', 'koka-ico-users': 'Клиенты', 'koka-ico-link': 'Звено',
+		'koka-ico-refresh': 'Обновить', 'koka-ico-check': 'Галочка', 'koka-ico-edit': 'Изменить',
+		'koka-ico-trash': 'Удалить', 'koka-ico-reset': 'Сброс', 'koka-ico-help': 'Справка'
+	};
 
 	function loadActions() {
 		try {
@@ -900,6 +913,15 @@
 		var tries = 0;
 		var timer = window.setInterval(function () {
 			var attached = attach();
+
+			/* Wi-Fi занимает место бывшей карточки «Быстрые действия» */
+			var quick = quickCard();
+
+			if (attached && quick && !quick.__kokaHidden) {
+				quick.__kokaHidden = true;
+				quick.style.display = 'none';
+			}
+
 			var injected = injectInternet();
 			var ports = decoratePorts();
 			var acts = renderActions();
