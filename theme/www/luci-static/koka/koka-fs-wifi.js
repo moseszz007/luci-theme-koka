@@ -326,8 +326,15 @@
 					if (!row.querySelector('.koka-ico-rj45'))
 						row.insertBefore(E('span', { class: 'koka-ico koka-ico-rj45' + (isWan ? ' wan' : ''), title: dev }), nameEl);
 
-					if (!row.querySelector('.koka-role'))
-						row.insertBefore(E('span', { class: 'koka-role' }, isWan ? 'WAN' : 'LAN'), nameEl.nextSibling);
+					var roleEl = row.querySelector('.koka-role');
+
+					if (roleEl) {
+						roleEl.textContent = isWan ? 'WAN' : 'LAN';
+						roleEl.classList.toggle('wan', isWan);
+					}
+					else {
+						row.insertBefore(E('span', { class: 'koka-role' + (isWan ? ' wan' : '') }, isWan ? 'WAN' : 'LAN'), nameEl.nextSibling);
+					}
 				});
 			});
 		}
