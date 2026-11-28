@@ -147,7 +147,13 @@ run_update() {
 case "$1" in
 	--background)
 		: > "$LOG"
-		nohup sh "$0" __run >>"$LOG" 2>&1 &
+		# nohup есть не во всех сборках busybox — используем setsid, а если нет,
+		# то обычный фоновый subshell с перенаправленным stdio
+		if command -v setsid >/dev/null 2>&1; then
+			setsid sh "$0" __run >>"$LOG" 2>&1 </dev/null &
+		else
+			( sh "$0" __run >>"$LOG" 2>&1 </dev/null & )
+		fi
 		echo "Обновление запущено в фоне."
 		exit 0
 		;;
