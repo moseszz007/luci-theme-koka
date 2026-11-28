@@ -1170,6 +1170,34 @@ textarea:invalid:focus {
 	margin-top: 10px;
 }
 
+.koka-wifi-eye {
+	padding: 2px 6px;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	cursor: pointer;
+	font-size: .9rem;
+	line-height: 1;
+	opacity: .7;
+	filter: grayscale(1);
+}
+
+.koka-wifi-eye.on {
+	opacity: 1;
+	filter: none;
+}
+
+.koka-wifi-key {
+	font-family: var(--M, ui-monospace);
+	font-size: .78rem;
+	color: var(--c);
+	white-space: nowrap;
+}
+
+.koka-hidden {
+	display: none !important;
+}
+
 /* ==== Страница входа (sysauth) ====
  * Карточка в стеклянном стиле темы: логотип, хост, поля с иконками,
  * кнопка на всю ширину. Блюр — на самой карточке, анимация только transform,
