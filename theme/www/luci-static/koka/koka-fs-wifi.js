@@ -337,35 +337,78 @@
 		if (!card || card.__kokaPorts)
 			return false;
 
-		var box = card.querySelector('.koka-ports');
+		var native = card.querySelector('.koka-ports');
 
-		if (!box)
+		if (!native)
 			return false;
 
 		card.__kokaPorts = true;
 
-		function apply() {
+		/* Собственный список портов рядом с «родным»: дашборд перерисовывает
+		 * свой каждые несколько секунд (eth0/eth1), из-за чего раздел
+		 * «прыгал». Наш контейнер живёт отдельно и обновляется только когда
+		 * реально меняются данные. */
+		var own = E('div', { class: 'koka-ports koka-ports-koka' });
+
+		native.parentNode.insertBefore(own, native.nextSibling);
+		native.style.display = 'none';
+
+		var signature = '';
+
+		function hideNative() {
+			if (native.style.display !== 'none')
+				native.style.display = 'none';
+		}
+
+		function render() {
 			portsModel().then(function (ports) {
 				if (!ports.length)
 					return;
 
-				box.replaceChildren.apply(box, ports.map(function (p) {
+				var sig = JSON.stringify(ports.map(function (p) {
+					return [ p.name, p.link, p.speed, p.rx, p.tx, p.role ];
+				}));
+
+				if (sig === signature)
+					return;
+
+				signature = sig;
+
+				own.replaceChildren.apply(own, ports.map(function (p) {
 					return E('div', { class: 'koka-port' + (p.link ? '' : ' off') }, [
 						E('span', { class: 'koka-dot' + (p.link ? ' on' : '') }),
 						E('span', { class: 'koka-ico koka-ico-rj45' + (p.role === 'WAN' ? ' wan' : '') }),
 						E('span', { class: 'koka-port-name' }, p.name),
 						E('span', { class: 'koka-role' + (p.role === 'WAN' ? ' wan' : '') }, p.role),
 						E('div', { class: 'koka-port-main' }, [
-							E('span', { class: 'koka-port-speed' }, p.link ? (p.speed ? p.speed + ' Mb/s' : 'линк') : 'нет линка'),
-							E('span', { class: 'koka-port-bytes' }, p.link ? ('↓ ' + bytes(p.rx) + ' ↑ ' + bytes(p.tx)) : '')
+							E('span', { class: 'koka-port-speed' },
+								p.link ? (p.speed ? p.speed + ' Mb/s' : 'линк') : 'нет линка'),
+							E('span', { class: 'koka-port-bytes' },
+								p.link ? ('↓ ' + bytes(p.rx) + ' ↑ ' + bytes(p.tx)) : '')
 						])
 					]);
 				}));
 			});
 		}
 
-		apply();
-		new MutationObserver(apply).observe(card, { childList: true, subtree: true });
+		var pending = null;
+
+		function schedule() {
+			hideNative();
+
+			if (pending)
+				return;
+
+			pending = window.setTimeout(function () {
+				pending = null;
+				render();
+			}, 400);
+		}
+
+		render();
+
+		new MutationObserver(schedule).observe(card, { childList: true, subtree: true });
+		window.setInterval(hideNative, 1000);
 
 		return true;
 	}
