@@ -60,6 +60,15 @@
 				],
 				"/sbin/wifi": [
 					"exec"
+				],
+				"/bin/ping": [
+					"exec"
+				],
+				"/sbin/ip": [
+					"exec"
+				],
+				"/usr/bin/zerotier-cli": [
+					"exec"
 				]
 			}
 		}

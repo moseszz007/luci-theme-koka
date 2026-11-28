@@ -846,6 +846,53 @@ textarea:invalid:focus {
 	--koka-bg-op: 1;
 }
 
+/* ==== Статусы интернета и VPN на дашборде ==== */
+.koka-net-extra {
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px dashed color-mix(in srgb, var(--S) 45%, transparent);
+}
+
+.koka-net-extra .koka-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.koka-net-extra .koka-ico {
+	width: 15px;
+	height: 15px;
+}
+
+.koka-net-val {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.koka-net-pill {
+	padding: 1px 9px;
+	border-radius: 999px;
+	font-size: .76rem;
+	font-weight: 600;
+	line-height: 1.7;
+}
+
+.koka-net-pill.good {
+	background: color-mix(in srgb, var(--O, #15803d) 18%, transparent);
+	color: var(--O, #15803d);
+}
+
+.koka-net-pill.bad {
+	background: color-mix(in srgb, var(--K, #dc2626) 18%, transparent);
+	color: var(--K, #dc2626);
+}
+
+.koka-vpn.on {
+	border-color: color-mix(in srgb, var(--O, #15803d) 45%, transparent);
+	color: var(--O, #15803d);
+}
+
 /* ==== Блок Wi-Fi на дашборде ==== */
 .koka-wifi-row {
 	display: flex;
