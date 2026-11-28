@@ -87,6 +87,10 @@
 			.then(function () { return run(WIFI, [ 'reload' ]); });
 	}
 
+	var netTimer = null;
+	var portsObs = null;
+	var portsTimer = null;
+
 	function internetCard() {
 		var cards = [].slice.call(document.querySelectorAll('.koka-card'));
 
@@ -413,8 +417,16 @@
 
 		render();
 
-		new MutationObserver(schedule).observe(card, { childList: true, subtree: true });
-		window.setInterval(hideNative, 1000);
+		if (portsObs)
+			portsObs.disconnect();
+
+		portsObs = new MutationObserver(schedule);
+		portsObs.observe(card, { childList: true, subtree: true });
+
+		if (portsTimer)
+			window.clearInterval(portsTimer);
+
+		portsTimer = window.setInterval(hideNative, 1000);
 
 		return true;
 	}
@@ -452,7 +464,11 @@
 
 		host.insertBefore(box, host.firstChild);
 		refreshInternet(box);
-		window.setInterval(function () { refreshInternet(box); }, 15000);
+
+		if (netTimer)
+			window.clearInterval(netTimer);
+
+		netTimer = window.setInterval(function () { refreshInternet(box); }, 15000);
 
 		return true;
 	}
@@ -530,12 +546,20 @@
 			saveActions(list);
 		}
 
-		box.replaceChildren.apply(box, list.map(function (a) {
-			return E('a', { class: 'koka-action', href: a.url, title: a.label }, [
-				E('span', { class: 'koka-ico ' + a.icon }),
-				E('span', {}, a.label)
-			]);
-		}));
+		var sig = list.map(function (a) {
+			return a.label + '\u0000' + a.url + '\u0000' + a.icon;
+		}).join('\u0001');
+
+		if (box.__kokaSig !== sig) {
+			box.__kokaSig = sig;
+
+			box.replaceChildren.apply(box, list.map(function (a) {
+				return E('a', { class: 'koka-action', href: a.url, title: a.label }, [
+					E('span', { class: 'koka-ico ' + a.icon }),
+					E('span', {}, a.label)
+				]);
+			}));
+		}
 
 		/* шестерёнка в заголовке карточки */
 		var head = card.querySelector('.koka-card-head');
@@ -722,11 +746,18 @@
 			host.insertBefore(wrap, host.firstChild);
 		}
 
-		wrap.replaceChildren.apply(wrap, list.map(actionMarkup));
+		var sig = list.map(function (a) {
+			return a.label + '\u0000' + a.url + '\u0000' + a.icon;
+		}).join('\u0001');
+
+		if (wrap.__kokaSig !== sig) {
+			wrap.__kokaSig = sig;
+			wrap.replaceChildren.apply(wrap, list.map(actionMarkup));
+		}
 
 		/* прячем родные кнопки, чтобы не дублировались */
 		[].slice.call(host.querySelectorAll('a.koka-action, button.koka-action')).forEach(function (a) {
-			if (!a.closest('.koka-hero-list') && !a.classList.contains('koka-toolbtn'))
+			if (!a.closest('.koka-hero-list') && !a.classList.contains('koka-toolbtn') && a.style.display !== 'none')
 				a.style.display = 'none';
 		});
 
@@ -848,23 +879,21 @@
 				return false;
 
 			var quick = quickCard();
+			var parent = quick ? quick.parentNode : null;
 
-			if (!h.querySelector('.koka-wifi-card')) {
-				var parent = quick ? quick.parentNode : null;
+			if (parent) {
+				/* занимаем место «Быстрых действий» и берём их раскладку,
+				 * чтобы карточка вела себя как все остальные */
+				var span = (quick.className || '').match(/\bspan\d+\b/);
 
-				if (parent) {
-					/* занимаем место «Быстрых действий» и берём их раскладку,
-					 * чтобы карточка вела себя как все остальные */
-					var span = (quick.className || '').match(/\bspan\d+\b/);
+				if (span && !card.classList.contains(span[0]))
+					card.classList.add(span[0]);
 
-					if (span && !card.classList.contains(span[0]))
-						card.classList.add(span[0]);
-
+				if (card.parentNode !== parent || card.nextElementSibling !== quick)
 					parent.insertBefore(card, quick);
-				}
-				else {
-					h.appendChild(card);
-				}
+			}
+			else if (card.parentNode !== h) {
+				h.appendChild(card);
 			}
 
 			if (quick && quick.style.display !== 'none')
@@ -995,8 +1024,16 @@
 			});
 		}
 
-		var tries = 0;
-		var timer = window.setInterval(function () {
+		/* Дашборд живёт в клиентском router'е темы (fs-router): переход по
+		 * ссылке из шапки перерисовывает #view без перезагрузки страницы, и
+		 * все наши вставки пропадают. Поэтому не один цикл «до победы», а
+		 * постоянный наблюдатель: как только разметка сменилась — возвращаем
+		 * Wi-Fi, индикаторы детектора, порты и кнопки. */
+		function ensureAll() {
+			if (!host())
+				return false;
+
+			var hadWifi = !!document.querySelector('.koka-wifi-card');
 			var attached = attach();
 
 			/* Wi-Fi занимает место бывшей карточки «Быстрые действия» */
@@ -1007,17 +1044,58 @@
 				quick.style.display = 'none';
 			}
 
-			var injected = injectInternet();
-			var ports = decoratePorts();
-			var acts = renderActions();
-			var tools = setupHeroTools();
-			var heroActs = renderHeroActions();
+			injectInternet();
+			decoratePorts();
+			renderActions();
+			setupHeroTools();
+			renderHeroActions();
 
-			if ((attached && injected && ports && acts && tools && heroActs) || ++tries > 60) {
-				window.clearInterval(timer);
+			if (attached && !hadWifi)
 				refresh();
-			}
-		}, 250);
+
+			return true;
+		}
+
+		ensureAll();
+
+		var observer = null;
+		var observed = null;
+		var pending = null;
+
+		function watch() {
+			if (!window.MutationObserver)
+				return;
+
+			var root = document.querySelector('.fs-content') || document.body;
+
+			if (observed === root)
+				return;
+
+			if (observer)
+				observer.disconnect();
+
+			observed = root;
+			observer = new MutationObserver(function () {
+				if (pending)
+					return;
+
+				pending = window.setTimeout(function () {
+					pending = null;
+					watch();
+					ensureAll();
+				}, 250);
+			});
+
+			observer.observe(root, { childList: true, subtree: true });
+		}
+
+		watch();
+
+		/* страховка на случай, если наблюдатель отвалился вместе с оболочкой */
+		window.setInterval(function () {
+			watch();
+			ensureAll();
+		}, 1500);
 	}
 
 	if (document.readyState === 'loading')
