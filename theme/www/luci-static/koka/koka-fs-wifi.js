@@ -197,7 +197,7 @@
 					var params = [];
 
 					if (c.hosts)
-						params.push(c.hosts);
+						params.push(c.hosts.replace(/'\s+'/g, ' · ').replace(/'/g, ''));
 
 					if (c.interval_up)
 						params.push('каждые ' + c.interval_up + ' с');
@@ -244,18 +244,30 @@
 		});
 	}
 
+	function cleanPills(card) {
+		/* Пилюли детектора вида «internet: Онлайн» больше не нужны: их
+		 * заменяет наш блок с иконками и параметрами. */
+		[].slice.call(card.querySelectorAll('.koka-pill')).forEach(function (pill) {
+			if (/^[^:]+:\s*(Онлайн|Офлайн|Неизвестно)$/.test(pill.textContent.trim()))
+				pill.remove();
+		});
+	}
+
 	function injectInternet() {
 		var card = internetCard();
 
 		if (!card)
 			return false;
 
-		/* Старые пилюли детектора («internet: Онлайн») убираем: ниже идут
-		 * наши индикаторы с иконками и параметрами. */
-		[].slice.call(card.querySelectorAll('.koka-pill')).forEach(function (pill) {
-			if (/^[^:]+:\s*(Онлайн|Офлайн|Неизвестно)$/.test(pill.textContent.trim()))
-				pill.remove();
-		});
+		cleanPills(card);
+
+		if (!card.__kokaPillObserver) {
+			card.__kokaPillObserver = new MutationObserver(function () {
+				cleanPills(card);
+			});
+
+			card.__kokaPillObserver.observe(card, { childList: true, subtree: true });
+		}
 
 		if (card.querySelector('.koka-net-extra'))
 			return true;
